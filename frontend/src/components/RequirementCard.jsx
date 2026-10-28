@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Copy, Check, Sparkles, HelpCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Copy, Check, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function RequirementCard({ index, item, onApplyRewrite }) {
   const [expanded, setExpanded] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
-  const { text, score, status, defects = [], defect_count = 0, highlights = [] } = item;
+  const { text, score = 0, defects = [], defect_count = 0, highlights = [] } = item;
 
-  // Status color styling
-  let scoreBadge = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+  // Determine score status styling
+  let scoreBadgeColor = 'text-emerald-700 border-emerald-200 bg-emerald-50';
   if (score < 70) {
-    scoreBadge = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+    scoreBadgeColor = 'text-rose-700 border-rose-200 bg-rose-50';
   } else if (score < 90) {
-    scoreBadge = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+    scoreBadgeColor = 'text-amber-800 border-amber-200 bg-amber-50';
   }
 
-  // Highlight problematic words inside requirement text
+  // Refined text highlighting for problematic keywords
   const renderHighlightedText = (originalText, highlightWords) => {
     if (!highlightWords || highlightWords.length === 0) {
       return <span>{originalText}</span>;
     }
 
-    // Escape regex special chars
     const pattern = new RegExp(`\\b(${highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
     const parts = originalText.split(pattern);
 
@@ -31,12 +30,13 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
           const isMatch = highlightWords.some(hw => hw.toLowerCase() === part.toLowerCase());
           if (isMatch) {
             return (
-              <mark
+              <span
                 key={i}
-                className="bg-amber-500/20 text-amber-300 font-semibold px-1 py-0.5 rounded border border-amber-500/40"
+                className="bg-rose-50 text-rose-800 border-b-2 border-rose-400 px-1 py-0.5 rounded-xs font-medium"
+                title="Problematic or non-verifiable phrasing detected"
               >
                 {part}
-              </mark>
+              </span>
             );
           }
           return part;
@@ -51,149 +51,150 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
+  const reqId = `REQ-${String(index + 1).padStart(2, '0')}`;
+
   return (
-    <div className={`w-full rounded-2xl border transition-all ${
-      defect_count > 0 
-        ? 'bg-slate-950/70 border-slate-800 hover:border-slate-700' 
-        : 'bg-slate-950/40 border-slate-800/60'
-    } p-5 md:p-6 mb-4 shadow-lg`}>
-      
-      {/* Header Row: Requirement Index, Score Badge, Status & Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/60">
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs font-mono text-indigo-400 font-semibold">
-            REQ #{String(index + 1).padStart(2, '0')}
+    <div
+      className={`rounded-lg border transition-colors bg-white shadow-sm ${
+        defect_count > 0 ? 'border-zinc-200' : 'border-zinc-200/80'
+      }`}
+    >
+      {/* Header bar */}
+      <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/70">
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-700 shadow-2xs">
+            {reqId}
           </span>
+
           {defect_count === 0 ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
-              <CheckCircle className="w-3 h-3" /> Clear
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Compliant</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-xs font-semibold border border-rose-500/20">
-              <AlertCircle className="w-3 h-3" /> {defect_count} Defect{defect_count > 1 ? 's' : ''}
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              <span>{defect_count} {defect_count === 1 ? 'Defect' : 'Defects'}</span>
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className={`px-3 py-1 rounded-lg border text-xs font-bold font-mono ${scoreBadge}`}>
-            Score: {score}/100
-          </div>
+        <div className="flex items-center gap-2.5">
+          <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded border ${scoreBadgeColor}`}>
+            {score}/100
+          </span>
 
           {defect_count > 0 && (
             <button
+              type="button"
               onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30 transition-all"
+              className="inline-flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-900 px-2.5 py-1 rounded bg-white hover:bg-zinc-100 border border-zinc-200 transition-colors shadow-2xs"
             >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>{expanded ? 'Hide Analysis' : 'Why? & Fix'}</span>
+              <span>{expanded ? 'Hide Details' : 'Review Defects'}</span>
               {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           )}
         </div>
       </div>
 
-      {/* Requirement Statement Body with Highlights */}
-      <div className="mt-4">
-        <p className="text-slate-100 text-base leading-relaxed font-medium">
-          "{renderHighlightedText(text, highlights)}"
+      {/* Requirement Statement */}
+      <div className="p-4 sm:p-5">
+        <p className="text-sm text-zinc-900 leading-relaxed font-normal">
+          {renderHighlightedText(text, highlights)}
         </p>
-      </div>
 
-      {/* Defect Category Badges */}
-      {defect_count > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {defects.map((def, i) => {
-            let catBadge = 'bg-slate-800 text-slate-300 border-slate-700';
-            if (def.category === 'is_ambiguous') catBadge = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
-            if (def.category === 'is_incomplete') catBadge = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
-            if (def.category === 'is_untestable') catBadge = 'bg-sky-500/15 text-sky-300 border-sky-500/30';
-            if (def.category === 'is_weak') catBadge = 'bg-purple-500/15 text-purple-300 border-purple-500/30';
-
-            return (
-              <span key={i} className={`px-2.5 py-1 rounded-lg border text-xs font-semibold ${catBadge}`}>
+        {/* Category tags */}
+        {defect_count > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {defects.map((def, i) => (
+              <span
+                key={i}
+                className="px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200"
+              >
                 {def.issue}
               </span>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Expandable Explainability & Rewrite Drawer */}
-      {expanded && defects.length > 0 && (
-        <div className="mt-5 pt-4 border-t border-slate-800 space-y-4">
-          {defects.map((def, i) => (
-            <div key={i} className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-white">{def.issue}</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-[10px] uppercase font-bold text-slate-400">
-                    Severity: {def.severity}
+        {/* Expanded Defect Diagnostics & Recommended Rewrite */}
+        {expanded && defects.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-zinc-100 space-y-3.5">
+            {defects.map((def, i) => (
+              <div key={i} className="bg-zinc-50/70 p-4 rounded-md border border-zinc-200 space-y-3">
+                
+                {/* Defect Header */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-zinc-900">{def.issue}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-zinc-600 border border-zinc-200">
+                    Severity: {def.severity || 'Medium'}
                   </span>
                 </div>
-              </div>
 
-              {/* Explainability Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
-                  <span className="font-semibold text-rose-400 block mb-1">Issue & Reason:</span>
-                  <p className="text-slate-300">{def.reason}</p>
-                </div>
-                <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
-                  <span className="font-semibold text-amber-400 block mb-1">Business & QA Impact:</span>
-                  <p className="text-slate-300">{def.business_impact}</p>
-                </div>
-              </div>
-
-              {/* Suggested Improvement / Rewrite Box */}
-              <div className="p-3.5 bg-indigo-950/20 rounded-xl border border-indigo-500/30">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                    Suggested Improvement:
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(def.rewrite, i)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition-all"
-                    >
-                      {copiedIndex === i ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span>Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-
-                    {onApplyRewrite && (
-                      <button
-                        type="button"
-                        onClick={() => onApplyRewrite(index, def.rewrite)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow transition-all"
-                      >
-                        Apply Fix
-                      </button>
-                    )}
+                {/* Issue and QA Impact Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded bg-white border border-zinc-200 shadow-2xs">
+                    <span className="text-[11px] font-semibold text-zinc-500 block mb-1">Defect Analysis</span>
+                    <p className="text-zinc-700 leading-relaxed">{def.reason}</p>
+                  </div>
+                  <div className="p-3 rounded bg-white border border-zinc-200 shadow-2xs">
+                    <span className="text-[11px] font-semibold text-zinc-500 block mb-1">Engineering Impact</span>
+                    <p className="text-zinc-700 leading-relaxed">{def.business_impact}</p>
                   </div>
                 </div>
 
-                <p className="text-sm font-mono text-emerald-300 mt-1">
-                  "{def.rewrite}"
-                </p>
+                {/* Recommended Rewrite */}
+                {def.rewrite && (
+                  <div className="p-3.5 rounded bg-blue-50/40 border border-blue-200/80">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs font-semibold text-blue-950 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Recommended IEEE Revision:</span>
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(def.rewrite, i)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-zinc-700 hover:text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 shadow-2xs transition-colors"
+                        >
+                          {copiedIndex === i ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 text-zinc-500" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+
+                        {onApplyRewrite && (
+                          <button
+                            type="button"
+                            onClick={() => onApplyRewrite(index, def.rewrite)}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-2xs"
+                          >
+                            <span>Apply Fix</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs font-mono text-zinc-900 leading-relaxed bg-white p-2.5 rounded border border-blue-100 shadow-2xs">
+                      "{def.rewrite}"
+                    </p>
+                  </div>
+                )}
+
               </div>
-
-            </div>
-          ))}
-        </div>
-      )}
-
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

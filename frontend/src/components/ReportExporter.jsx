@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Download, Printer, FileSpreadsheet, Check } from 'lucide-react';
+import { API_ENDPOINTS } from '../config';
 
 export default function ReportExporter({ analysisData }) {
   const [downloading, setDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   if (!analysisData) return null;
 
   const handleExportCSV = async () => {
     setDownloading(true);
     try {
-      const res = await fetch('/api/v1/export/csv', {
+      const res = await fetch(API_ENDPOINTS.EXPORT_CSV, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)
@@ -23,6 +25,8 @@ export default function ReportExporter({ analysisData }) {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 2500);
     } catch (err) {
       console.error('CSV Export Error:', err);
     } finally {
@@ -35,35 +39,48 @@ export default function ReportExporter({ analysisData }) {
   };
 
   return (
-    <div className="w-full glass-card p-6 rounded-3xl border border-slate-800 shadow-xl mb-8 flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Download className="w-4 h-4 text-indigo-400" />
-          Export Intelligence Analysis Report
-        </h3>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Download full requirement audit data in CSV spreadsheet format or export printable PDF report.
-        </p>
+    <div className="surface-card rounded-lg border border-zinc-200 px-5 py-3.5 mb-6 flex flex-wrap items-center justify-between gap-4 bg-white shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-md bg-zinc-100 border border-zinc-200 text-zinc-600 flex items-center justify-center shrink-0">
+          <Download className="w-4 h-4 text-zinc-600" />
+        </div>
+        <div>
+          <h3 className="text-xs font-semibold text-zinc-900">
+            Export Audit Report
+          </h3>
+          <p className="text-[11px] text-zinc-500">
+            Generate CSV spreadsheet for traceability matrices or print a standardized compliance summary.
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={handleExportCSV}
           disabled={downloading}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all shadow"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium border border-zinc-300 shadow-sm transition-colors disabled:opacity-50"
         >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-          <span>{downloading ? 'Downloading...' : 'Export CSV'}</span>
+          {downloadSuccess ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Downloaded</span>
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-zinc-500" />
+              <span>{downloading ? 'Exporting...' : 'Export CSV'}</span>
+            </>
+          )}
         </button>
 
         <button
           type="button"
           onClick={handlePrintPDF}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium shadow-sm transition-colors"
         >
-          <Printer className="w-4 h-4" />
-          <span>Export PDF Report</span>
+          <Printer className="w-3.5 h-3.5 text-zinc-300" />
+          <span>Print / PDF</span>
         </button>
       </div>
     </div>

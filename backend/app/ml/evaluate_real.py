@@ -1,8 +1,18 @@
-from pathlib import Path
-import pandas as pd
 import sys
+from pathlib import Path
 
-from app.ml.classifier import RequirementClassifier
+backend_dir = Path(__file__).resolve().parents[2]
+repo_root = Path(__file__).resolve().parents[3]
+for directory in (backend_dir, repo_root):
+    if str(directory) not in sys.path:
+        sys.path.insert(0, str(directory))
+
+import pandas as pd
+
+try:
+    from app.ml.classifier import RequirementClassifier
+except ImportError:
+    from backend.app.ml.classifier import RequirementClassifier
 
 
 def main():

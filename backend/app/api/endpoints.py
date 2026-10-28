@@ -1,15 +1,28 @@
+import sys
+from pathlib import Path
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import uuid
 import csv
 import io
-
-from app.ml.preprocessor import RequirementPreprocessor
-from app.ml.classifier import RequirementClassifier
-from app.services.document_parser import DocumentParser
-from pathlib import Path
 import pandas as pd
+
+# Ensure backend root and workspace root are on sys.path
+backend_dir = Path(__file__).resolve().parent.parent.parent
+repo_root = backend_dir.parent
+for directory in (backend_dir, repo_root):
+    if str(directory) not in sys.path:
+        sys.path.insert(0, str(directory))
+
+try:
+    from app.ml.preprocessor import RequirementPreprocessor
+    from app.ml.classifier import RequirementClassifier
+    from app.services.document_parser import DocumentParser
+except ImportError:
+    from backend.app.ml.preprocessor import RequirementPreprocessor
+    from backend.app.ml.classifier import RequirementClassifier
+    from backend.app.services.document_parser import DocumentParser
 
 router = APIRouter(prefix="/api/v1", tags=["Requirement Analysis"])
 
@@ -270,6 +283,11 @@ def analyze_text(payload: TextAnalysisRequest):
     """
     Analyzes raw requirements text payload.
     """
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Input text cannot be empty.")
+    if len(payload.text) > 2_000_000:
+        raise HTTPException(status_code=413, detail="Text payload exceeds maximum length limit (2MB).")
+
     sentences = preprocessor.extract_sentences(payload.text)
     return calculate_analysis_payload(sentences)
 
@@ -278,9 +296,25 @@ async def analyze_file(file: UploadFile = File(...)):
     """
     Extracts text from uploaded file (TXT/PDF/DOCX) and returns full requirement quality intelligence.
     """
-    raw_text = await DocumentParser.parse_file(file)
+    filename = file.filename or "uploaded document"
+    try:
+        raw_text = await DocumentParser.parse_file(file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to extract text from '{filename}': {exc}"
+        )
+
     sentences = preprocessor.extract_sentences(raw_text)
+    if not sentences:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not extract readable requirement statements from '{filename}'. The document may be image-based/scanned or contain non-standard formatting."
+        )
     return calculate_analysis_payload(sentences)
+
 
 @router.post("/export/csv")
 def export_csv_report(payload: AnalysisResponse):

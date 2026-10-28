@@ -1,0 +1,1 @@
+"""SpecSense AI backend package."""

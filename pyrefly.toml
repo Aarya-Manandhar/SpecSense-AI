@@ -1,0 +1,16 @@
+# Pyrefly Configuration for SpecSense AI
+python-interpreter-path = "C:/Python314/python.exe"
+
+site-packages-path = [
+  "C:/Python314/Lib/site-packages",
+  "C:/Users/asus/AppData/Roaming/Python/Python314/site-packages"
+]
+
+search-path = [
+  ".",
+  "backend",
+  "backend/app",
+  "backend/app/ml",
+  "backend/app/services",
+  "backend/app/api"
+]

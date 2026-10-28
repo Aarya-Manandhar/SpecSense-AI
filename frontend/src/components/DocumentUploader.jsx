@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, RefreshCw, AlertCircle, Play, X } from 'lucide-react';
 
 const SAMPLE_BANKING_SRS = `REQ-01: The system shall encrypt all user passwords using AES-256 encryption.
 REQ-02: The application should update user balance records periodically.
@@ -10,10 +10,11 @@ REQ-06: If the user inputs an invalid password, the system shall lock the accoun
 REQ-07: The database backup may be executed during off-peak hours if feasible.
 REQ-08: The customer support portal should be robust and easy to use.`;
 
-export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading }) {
+export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading, isOffline }) {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'text'
   const [rawText, setRawText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -24,6 +25,7 @@ export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading
 
   const handleDrop = (e) => {
     e.preventDefault();
+    setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setSelectedFile(e.dataTransfer.files[0]);
     }
@@ -31,6 +33,11 @@ export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
   };
 
   const handleSubmit = (e) => {
@@ -48,54 +55,60 @@ export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading
     onAnalyzeText(SAMPLE_BANKING_SRS);
   };
 
+  const clearSelectedFile = (e) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const isSubmitDisabled =
+    loading ||
+    isOffline ||
+    (activeTab === 'upload' && !selectedFile) ||
+    (activeTab === 'text' && !rawText.trim());
+
   return (
-    <div className="w-full glass-card p-6 md:p-8 rounded-3xl border border-slate-800 shadow-2xl mb-8">
-      {/* Mode Switcher Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-800/80">
+    <div className="surface-card rounded-lg border border-zinc-200 mb-6 overflow-hidden bg-white shadow-sm">
+      {/* Header bar with Tab switcher */}
+      <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-400" />
-            SRS Input & Requirements Parser
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Upload SRS specification (PDF, DOCX, TXT) or paste raw requirement statements.
+          <h2 className="text-sm font-semibold text-zinc-900 tracking-tight">Specification Source</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Upload an SRS document or paste requirements directly for automated standards compliance audit.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+        {/* Minimal segmented toggle */}
+        <div className="inline-flex p-0.5 rounded-md bg-zinc-100 border border-zinc-200 text-xs font-medium">
           <button
             type="button"
             onClick={() => setActiveTab('upload')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded transition-colors ${
               activeTab === 'upload'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-zinc-900 border border-zinc-200 shadow-sm'
+                : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
-            Upload File (PDF/DOCX)
+            File Upload
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('text')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded transition-colors ${
               activeTab === 'text'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-zinc-900 border border-zinc-200 shadow-sm'
+                : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
-            Paste Text
+            Direct Input
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Main input content */}
+      <form onSubmit={handleSubmit} className="p-5 space-y-4">
         {activeTab === 'upload' ? (
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-            className="group cursor-pointer border-2 border-dashed border-slate-700/80 hover:border-indigo-500/80 bg-slate-950/40 hover:bg-indigo-950/10 p-8 rounded-2xl text-center transition-all flex flex-col items-center justify-center min-h-[200px]"
-          >
+          <div>
             <input
               ref={fileInputRef}
               type="file"
@@ -103,66 +116,109 @@ export default function DocumentUploader({ onAnalyzeText, onAnalyzeFile, loading
               onChange={handleFileChange}
               className="hidden"
             />
-            <div className="p-4 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl group-hover:scale-110 transition-transform mb-3">
-              <Upload className="w-8 h-8" />
-            </div>
+
             {selectedFile ? (
-              <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Selected: {selectedFile.name}</span>
-                <span className="text-xs text-slate-500">
-                  ({(selectedFile.size / 1024).toFixed(1)} KB)
-                </span>
+              <div className="p-4 rounded-md border border-zinc-200 bg-zinc-50 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="truncate">
+                    <p className="text-xs font-medium text-zinc-900 truncate">{selectedFile.name}</p>
+                    <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                      {(selectedFile.size / 1024).toFixed(1)} KB • Ready for analysis
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 text-xs text-zinc-700 hover:text-zinc-900 bg-white border border-zinc-300 hover:bg-zinc-50 rounded shadow-sm transition-colors"
+                  >
+                    Change file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelectedFile}
+                    className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors"
+                    title="Remove selected file"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ) : (
-              <>
-                <p className="text-sm font-semibold text-slate-200">
-                  Drop your SRS Document here, or <span className="text-indigo-400">Browse</span>
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`cursor-pointer border border-dashed rounded-md p-8 text-center transition-all flex flex-col items-center justify-center min-h-[140px] ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50/50'
+                    : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50/40 hover:bg-zinc-50'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-md bg-white border border-zinc-200 text-zinc-600 flex items-center justify-center mb-3 shadow-sm">
+                  <Upload className="w-4 h-4 text-zinc-600" />
+                </div>
+                <p className="text-xs font-medium text-zinc-900">
+                  Click to browse or drop SRS document here
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Supports PDF (.pdf), Microsoft Word (.docx), Plain Text (.txt)
-                </p>
-              </>
+                <div className="flex items-center gap-1.5 mt-2 text-[11px] text-zinc-500">
+                  <span>Supported formats:</span>
+                  <span className="font-mono text-zinc-700 font-medium">PDF, DOCX, TXT, MD</span>
+                </div>
+              </div>
             )}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div>
             <textarea
               rows={6}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="Paste software requirement statements here (e.g. 'The system shall respond quickly...')"
-              className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-2xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono transition-all resize-none"
+              placeholder="Paste or write requirement statements (e.g., REQ-01: The system shall encrypt all user passwords using AES-256...)"
+              className="w-full bg-white border border-zinc-200 focus:border-blue-500 rounded-md p-3.5 text-xs text-zinc-900 placeholder-zinc-400 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none leading-relaxed shadow-sm"
             />
+            <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+              <span>One statement per line or with REQ-xx prefixes</span>
+              <span>{rawText.trim() ? `${rawText.split('\n').filter(Boolean).length} statements` : '0 statements'}</span>
+            </div>
           </div>
         )}
 
-        {/* Action Controls & Sample Preset Button */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100">
           <button
             type="button"
             onClick={loadSample}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700/60 transition-all"
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-zinc-50 text-zinc-700 hover:text-zinc-900 text-xs font-medium border border-zinc-300 shadow-sm transition-colors disabled:opacity-50"
           >
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            Load Sample Banking SRS
+            <Play className="w-3 h-3 text-zinc-500" />
+            <span>Load Sample Spec</span>
           </button>
 
           <button
             type="submit"
-            disabled={loading || (activeTab === 'upload' && !selectedFile) || (activeTab === 'text' && !rawText.trim())}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            disabled={isSubmitDisabled}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
             {loading ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Analyzing Requirements...
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Running Audit...</span>
+              </>
+            ) : isOffline ? (
+              <>
+                <AlertCircle className="w-3.5 h-3.5 text-white" />
+                <span>Backend Offline</span>
               </>
             ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Analyze Requirements
-              </>
+              <span>Run Specification Audit</span>
             )}
           </button>
         </div>

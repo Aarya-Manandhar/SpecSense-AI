@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, ShieldAlert, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function QualityScoreCard({ data }) {
   if (!data) return null;
@@ -9,177 +9,208 @@ export default function QualityScoreCard({ data }) {
     overall_status,
     total_requirements,
     defective_requirements_count,
-    threshold_category,
-    clear_percentage,
-    ambiguous_percentage,
-    incomplete_percentage,
-    untestable_percentage,
-    weak_percentage,
+    clear_percentage = 0,
+    ambiguous_percentage = 0,
+    incomplete_percentage = 0,
+    untestable_percentage = 0,
+    weak_percentage = 0,
     counts_by_category = {}
   } = data;
 
-  // Determine color theme based on score
-  let scoreColor = 'from-emerald-500 to-teal-400 text-emerald-400';
-  let badgeBg = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+  // Determine score status styling
+  let statusBadge = {
+    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dot: 'bg-emerald-500',
+    icon: CheckCircle2,
+    scoreColor: 'text-emerald-600',
+    trackColor: 'bg-emerald-500',
+  };
+
   if (project_score < 70) {
-    scoreColor = 'from-rose-500 to-amber-500 text-rose-400';
-    badgeBg = 'bg-rose-500/10 border-rose-500/30 text-rose-300';
+    statusBadge = {
+      bg: 'bg-rose-50 text-rose-700 border-rose-200',
+      dot: 'bg-rose-500',
+      icon: AlertCircle,
+      scoreColor: 'text-rose-600',
+      trackColor: 'bg-rose-500',
+    };
   } else if (project_score < 90) {
-    scoreColor = 'from-amber-400 to-yellow-300 text-amber-400';
-    badgeBg = 'bg-amber-500/10 border-amber-500/30 text-amber-300';
+    statusBadge = {
+      bg: 'bg-amber-50 text-amber-800 border-amber-200',
+      dot: 'bg-amber-500',
+      icon: AlertTriangle,
+      scoreColor: 'text-amber-600',
+      trackColor: 'bg-amber-500',
+    };
   }
 
-  const clearCount = total_requirements - defective_requirements_count;
+  const clearCount = Math.max(0, total_requirements - defective_requirements_count);
+
+  const defectCategories = [
+    {
+      key: 'clear',
+      label: 'Compliant Requirements',
+      description: 'Zero defects detected',
+      percentage: clear_percentage,
+      count: clearCount,
+      color: 'bg-emerald-500',
+      textColor: 'text-emerald-600',
+    },
+    {
+      key: 'is_ambiguous',
+      label: 'Ambiguity',
+      description: 'Vague, subjective, or open-ended phrasing',
+      percentage: ambiguous_percentage,
+      count: counts_by_category.is_ambiguous || 0,
+      color: 'bg-rose-500',
+      textColor: 'text-rose-600',
+    },
+    {
+      key: 'is_incomplete',
+      label: 'Incompleteness',
+      description: 'Missing error conditions or conditional branches',
+      percentage: incomplete_percentage,
+      count: counts_by_category.is_incomplete || 0,
+      color: 'bg-amber-500',
+      textColor: 'text-amber-600',
+    },
+    {
+      key: 'is_untestable',
+      label: 'Non-Testable',
+      description: 'Subjective assertions lacking measurable verification metrics',
+      percentage: untestable_percentage,
+      count: counts_by_category.is_untestable || 0,
+      color: 'bg-sky-500',
+      textColor: 'text-sky-600',
+    },
+    {
+      key: 'is_weak',
+      label: 'Weak Modality',
+      description: 'Uses optional terms ("should", "may") instead of mandatory "shall"',
+      percentage: weak_percentage,
+      count: counts_by_category.is_weak || 0,
+      color: 'bg-indigo-500',
+      textColor: 'text-indigo-600',
+    },
+  ];
 
   return (
-    <div className="w-full glass-card p-6 md:p-8 rounded-3xl border border-slate-800 shadow-2xl mb-8">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        
-        {/* Requirement Quality Score Gauge / Circle */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950/60 rounded-2xl border border-slate-800/80 text-center">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-indigo-400" />
-            Requirement Quality Score™
+    <div className="surface-card rounded-lg border border-zinc-200 mb-6 overflow-hidden bg-white shadow-sm">
+      {/* Header bar */}
+      <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50/70 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900 tracking-tight">Specification Health Assessment</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Quality score evaluated according to IEEE 830 and ISO/IEC/IEEE 29148 requirement engineering standards.
           </p>
-
-          <div className="relative w-40 h-40 flex items-center justify-center">
-            {/* SVG Progress Ring */}
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-              <path
-                className="text-slate-800"
-                strokeWidth="3.5"
-                stroke="currentColor"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path
-                className={`transition-all duration-1000 ease-out`}
-                strokeDasharray={`${project_score}, 100`}
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                stroke="url(#scoreGradient)"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <defs>
-                <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor={project_score >= 90 ? '#10b981' : project_score >= 70 ? '#f59e0b' : '#f43f5e'} />
-                  <stop offset="100%" stopColor={project_score >= 90 ? '#14b8a6' : project_score >= 70 ? '#eab308' : '#fb923c'} />
-                </linearGradient>
-              </defs>
-            </svg>
-
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className={`text-4xl font-black tracking-tight bg-gradient-to-br ${scoreColor} bg-clip-text text-transparent`}>
-                {project_score}
-              </span>
-              <span className="text-xs text-slate-500 font-semibold mt-0.5">/ 100</span>
-            </div>
-          </div>
-
-          {/* Overall Risk Status Badge */}
-          <div className={`mt-5 px-4 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 ${badgeBg}`}>
-            {project_score >= 90 ? (
-              <CheckCircle className="w-3.5 h-3.5" />
-            ) : (
-              <ShieldAlert className="w-3.5 h-3.5" />
-            )}
-            <span>{overall_status}</span>
-          </div>
         </div>
-
-        {/* Breakdown Statistics & Defect Category Bars */}
-        <div className="lg:col-span-7 space-y-5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
-              <p className="text-xs text-slate-400 font-medium">Total Requirements</p>
-              <p className="text-xl font-bold text-white mt-1">{total_requirements}</p>
-            </div>
-            <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
-              <p className="text-xs text-emerald-400 font-medium">Clear / Ready</p>
-              <p className="text-xl font-bold text-emerald-400 mt-1">{clearCount}</p>
-            </div>
-            <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
-              <p className="text-xs text-rose-400 font-medium">Flagged Defects</p>
-              <p className="text-xl font-bold text-rose-400 mt-1">{defective_requirements_count}</p>
-            </div>
-          </div>
-
-          {/* Defect Category Distribution Progress Bars */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-1">
-              <span>Quality Defect Breakdown</span>
-              <span>Distribution</span>
-            </div>
-
-            {/* Clear Requirements Bar */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Clear Requirements
-                </span>
-                <span className="text-slate-400 font-mono">{clear_percentage}%</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${clear_percentage}%` }}></div>
-              </div>
-            </div>
-
-            {/* Ambiguous Bar */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 🔴 Ambiguous (Vague / Unmeasurable)
-                </span>
-                <span className="text-slate-400 font-mono">{ambiguous_percentage}% ({counts_by_category.is_ambiguous || 0})</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div className="h-full bg-rose-500 transition-all duration-700" style={{ width: `${ambiguous_percentage}%` }}></div>
-              </div>
-            </div>
-
-            {/* Incomplete Bar */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 🟠 Incomplete (Missing Exceptions)
-                </span>
-                <span className="text-slate-400 font-mono">{incomplete_percentage}% ({counts_by_category.is_incomplete || 0})</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 transition-all duration-700" style={{ width: `${incomplete_percentage}%` }}></div>
-              </div>
-            </div>
-
-            {/* Non-testable Bar */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 🔵 Non-Testable (Subjective Terms)
-                </span>
-                <span className="text-slate-400 font-mono">{untestable_percentage}% ({counts_by_category.is_untestable || 0})</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div className="h-full bg-sky-500 transition-all duration-700" style={{ width: `${untestable_percentage}%` }}></div>
-              </div>
-            </div>
-
-            {/* Weak Wording Bar */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span> 🟣 Weak Phrasing (Non-Mandatory Verbs)
-                </span>
-                <span className="text-slate-400 font-mono">{weak_percentage}% ({counts_by_category.is_weak || 0})</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 transition-all duration-700" style={{ width: `${weak_percentage}%` }}></div>
-              </div>
-            </div>
-
-          </div>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${statusBadge.bg}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
+          <span>{overall_status}</span>
         </div>
+      </div>
 
+      <div className="p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left Column: Health Score Card & KPI Stats */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="bg-zinc-50 p-5 rounded-md border border-zinc-200 flex items-center justify-between">
+              <div>
+                <span className="text-xs uppercase tracking-wider text-zinc-500 font-medium">Health Index</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className={`text-4xl font-semibold tracking-tight font-mono ${statusBadge.scoreColor}`}>
+                    {project_score}
+                  </span>
+                  <span className="text-xs text-zinc-500 font-mono">/ 100</span>
+                </div>
+                <p className="text-xs text-zinc-600 mt-2">
+                  {project_score >= 90
+                    ? 'Specification passes production quality gates.'
+                    : project_score >= 70
+                    ? 'Contains moderate ambiguities requiring revision before implementation.'
+                    : 'High defect density. Critical revisions recommended.'}
+                </p>
+              </div>
+
+              {/* Minimal Score Ring */}
+              <div className="relative w-16 h-16 shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="text-zinc-200"
+                    strokeWidth="3.5"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className="transition-all duration-700 ease-out"
+                    strokeDasharray={`${project_score}, 100`}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    style={{
+                      stroke: project_score >= 90 ? '#10b981' : project_score >= 70 ? '#f59e0b' : '#f43f5e'
+                    }}
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* 3 Metric Summary Boxes */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-white p-3 rounded-md border border-zinc-200 shadow-xs">
+                <p className="text-[11px] text-zinc-500">Total Statements</p>
+                <p className="text-lg font-semibold text-zinc-900 font-mono mt-0.5">{total_requirements}</p>
+              </div>
+              <div className="bg-white p-3 rounded-md border border-zinc-200 shadow-xs">
+                <p className="text-[11px] text-zinc-500">Compliant</p>
+                <p className="text-lg font-semibold text-emerald-600 font-mono mt-0.5">{clearCount}</p>
+              </div>
+              <div className="bg-white p-3 rounded-md border border-zinc-200 shadow-xs">
+                <p className="text-[11px] text-zinc-500">Flagged</p>
+                <p className="text-lg font-semibold text-rose-600 font-mono mt-0.5">{defective_requirements_count}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Defect Distribution Breakdown */}
+          <div className="lg:col-span-7 bg-zinc-50/70 p-4 rounded-md border border-zinc-200 space-y-3.5">
+            <div className="flex items-center justify-between text-xs font-medium text-zinc-600 pb-2 border-b border-zinc-200">
+              <span>Defect Distribution</span>
+              <span className="font-mono text-[11px]">Incidence Rate</span>
+            </div>
+
+            <div className="space-y-3">
+              {defectCategories.map((cat) => (
+                <div key={cat.key} className="group">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${cat.color}`} />
+                      <span className="font-medium text-zinc-800">{cat.label}</span>
+                      <span className="hidden sm:inline text-[11px] text-zinc-500">— {cat.description}</span>
+                    </div>
+                    <div className="flex items-center gap-2 font-mono text-[11px]">
+                      <span className="text-zinc-700 font-semibold">{cat.count}</span>
+                      <span className="text-zinc-500">({cat.percentage}%)</span>
+                    </div>
+                  </div>
+                  
+                  {/* Slim sleek progress meter */}
+                  <div className="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${cat.color} transition-all duration-500`}
+                      style={{ width: `${Math.min(100, Math.max(0, cat.percentage))}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );

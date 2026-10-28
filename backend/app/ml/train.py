@@ -5,8 +5,16 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score, precision_recall_fscore_support, roc_auc_score
 
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from app.ml.classifier import RequirementClassifier
+backend_dir = Path(__file__).resolve().parents[2]
+repo_root = Path(__file__).resolve().parents[3]
+for directory in (backend_dir, repo_root):
+    if str(directory) not in sys.path:
+        sys.path.insert(0, str(directory))
+
+try:
+    from app.ml.classifier import RequirementClassifier
+except ImportError:
+    from backend.app.ml.classifier import RequirementClassifier
 
 
 def train_val_test_flow():

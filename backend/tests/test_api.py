@@ -1,5 +1,18 @@
+import sys
+from pathlib import Path
+
+backend_dir = Path(__file__).resolve().parents[1]
+repo_root = Path(__file__).resolve().parents[2]
+for directory in (backend_dir, repo_root):
+    if str(directory) not in sys.path:
+        sys.path.insert(0, str(directory))
+
 from fastapi.testclient import TestClient
-from app.main import app
+
+try:
+    from app.main import app
+except ImportError:
+    from backend.app.main import app
 
 client = TestClient(app)
 
@@ -76,4 +89,30 @@ def test_export_csv():
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
     assert "Requirement #" in response.text
+
+def test_security_headers():
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert "x-process-time" in response.headers
+    assert response.headers.get("x-content-type-options") == "nosniff"
+    assert response.headers.get("x-frame-options") == "DENY"
+
+def test_empty_text_validation():
+    response = client.post("/api/v1/analyze-text", json={"text": "   "})
+    assert response.status_code == 400
+    assert "cannot be empty" in response.json()["detail"]
+
+def test_unsupported_file_extension():
+    files = {"file": ("malicious.exe", b"MZDummyHeader", "application/octet-stream")}
+    response = client.post("/api/v1/analyze", files=files)
+    assert response.status_code == 400
+    assert "Unsupported file format" in response.json()["detail"]
+
+def test_evaluation_summary_endpoint():
+    response = client.get("/api/v1/evaluation/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert "rows_evaluated" in data
+    assert "counts" in data
+
 

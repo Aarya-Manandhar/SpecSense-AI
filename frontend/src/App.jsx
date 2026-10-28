@@ -1,45 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Activity, Search, Filter, Layers, BarChart3, Sparkles, FileText, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Activity, Search, Filter, Layers, BarChart3, AlertCircle, RefreshCw, X } from 'lucide-react';
 import DocumentUploader from './components/DocumentUploader';
 import QualityScoreCard from './components/QualityScoreCard';
 import RequirementCard from './components/RequirementCard';
 import ReportExporter from './components/ReportExporter';
 import EvaluationPanel from './components/EvaluationPanel';
+import { API_ENDPOINTS } from './config';
 
 export default function App() {
   const [backendStatus, setBackendStatus] = useState({ loading: true, status: 'unknown' });
   const [activeTab, setActiveTab] = useState('analyzer'); // 'analyzer' | 'benchmark'
   const [loading, setLoading] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
-  
+  const [errorMessage, setErrorMessage] = useState(null);
+
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
-  const [defectFilter, setDefectFilter] = useState('ALL'); // 'ALL' | 'DEFECTIVE' | 'CLEAR' | 'is_ambiguous' | 'is_incomplete' | 'is_untestable' | 'is_weak'
+  const [defectFilter, setDefectFilter] = useState('ALL'); // 'ALL' | 'DEFECTIVE' | 'CLEAR' | category flags
+
+  const checkHealth = () => {
+    fetch(API_ENDPOINTS.HEALTH)
+      .then((res) => {
+        if (!res.ok) throw new Error('Backend HTTP error');
+        return res.json();
+      })
+      .then((data) => {
+        setBackendStatus({ loading: false, status: data.status || 'healthy', service: data.service });
+        setErrorMessage((prev) => (prev?.includes('Engine API is offline') ? null : prev));
+      })
+      .catch(() => {
+        setBackendStatus({ loading: false, status: 'offline' });
+      });
+  };
 
   useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => res.json())
-      .then((data) => {
-        setBackendStatus({ loading: false, status: data.status, service: data.service });
-      })
-      .catch((err) => {
-        console.error('Health check failed:', err);
-        setBackendStatus({ loading: false, status: 'disconnected' });
-      });
+    checkHealth();
+    const interval = setInterval(checkHealth, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAnalyzeText = async (text) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      const res = await fetch('/api/v1/analyze-text', {
+      const res = await fetch(API_ENDPOINTS.ANALYZE_TEXT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server returned status ${res.status}`);
+      }
       const data = await res.json();
       setAnalysisData(data);
     } catch (err) {
       console.error('Analyze text failed:', err);
+      setErrorMessage(
+        backendStatus.status === 'offline'
+          ? 'Engine API is offline. Please start the backend server to analyze requirements.'
+          : `Analysis failed: ${err.message}`
+      );
     } finally {
       setLoading(false);
     }
@@ -47,17 +68,27 @@ export default function App() {
 
   const handleAnalyzeFile = async (file) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/v1/analyze', {
+      const res = await fetch(API_ENDPOINTS.ANALYZE_FILE, {
         method: 'POST',
         body: formData
       });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server returned status ${res.status}`);
+      }
       const data = await res.json();
       setAnalysisData(data);
     } catch (err) {
       console.error('Analyze file failed:', err);
+      setErrorMessage(
+        backendStatus.status === 'offline'
+          ? 'Engine API is offline. Please start the backend server to process uploaded documents.'
+          : `Analysis failed: ${err.message}`
+      );
     } finally {
       setLoading(false);
     }
@@ -66,8 +97,6 @@ export default function App() {
   const handleApplyRewrite = (reqIndex, newText) => {
     if (!analysisData) return;
     const updatedRequirements = [...analysisData.requirements];
-    
-    // Replace text of requirement and reset its defects to clear
     updatedRequirements[reqIndex] = {
       ...updatedRequirements[reqIndex],
       text: newText,
@@ -78,9 +107,8 @@ export default function App() {
       highlights: []
     };
 
-    // Recalculate score & counts
     const totalScore = updatedRequirements.reduce((acc, curr) => acc + curr.score, 0);
-    const newProjectScore = round(totalScore / updatedRequirements.length);
+    const newProjectScore = Math.round(totalScore / updatedRequirements.length);
     const defectiveCount = updatedRequirements.filter(r => r.defect_count > 0).length;
 
     setAnalysisData({
@@ -91,171 +119,235 @@ export default function App() {
     });
   };
 
-  function round(val) {
-    return Math.round(val);
-  }
-
   // Filter requirements based on search and category filters
   const filteredRequirements = (analysisData?.requirements || []).filter((req) => {
     const matchesSearch = req.text.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     if (defectFilter === 'ALL') return matchesSearch;
     if (defectFilter === 'DEFECTIVE') return matchesSearch && req.defect_count > 0;
     if (defectFilter === 'CLEAR') return matchesSearch && req.defect_count === 0;
-    
-    // Category specific filters
+
     const hasCategory = req.defects.some(d => d.category === defectFilter);
     return matchesSearch && hasCategory;
   });
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-['Inter',sans-serif]">
-      
-      {/* Top Navigation Header */}
-      <header className="glass-panel sticky top-0 z-50 px-6 py-4 flex flex-wrap items-center justify-between border-b border-slate-800 gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-600/20 rounded-2xl border border-indigo-500/30 text-indigo-400">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="font-black text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent flex items-center gap-2">
-              SpecSense <span className="text-indigo-400">AI</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-medium">Pre-Development Requirements Intelligence Platform</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#f8fafc] text-zinc-900 flex flex-col font-sans antialiased selection:bg-blue-600/10 selection:text-blue-700">
 
-        {/* Center Tab Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-2xl border border-slate-800">
-          <button
-            onClick={() => setActiveTab('analyzer')}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
-              activeTab === 'analyzer'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Requirements Analyzer</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('benchmark')}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
-              activeTab === 'benchmark'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>PROMISE & EIRENE Benchmark</span>
-          </button>
-        </div>
+      {/* Top Application Header */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-200 px-6 py-3">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+          
+          {/* Logo & Product Identity */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold text-sm tracking-tight">
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-zinc-900 tracking-tight">SpecSense</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  v1.0
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 hidden sm:block">SRS Quality Assurance & Standards Verification</p>
+            </div>
+          </div>
 
-        {/* Backend System Status Badge */}
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/80 border border-slate-800 text-xs">
-          <Activity className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-          <span className="text-slate-400">Engine API:</span>
-          {backendStatus.loading ? (
-            <span className="text-amber-400 font-medium">Connecting...</span>
-          ) : backendStatus.status === 'healthy' ? (
-            <span className="text-emerald-400 font-semibold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Ready
-            </span>
-          ) : (
-            <span className="text-rose-400 font-medium">Offline</span>
-          )}
+          {/* Segmented Navigation Tabs */}
+          <div className="inline-flex p-0.5 rounded-md bg-zinc-100 border border-zinc-200 text-xs font-medium">
+            <button
+              onClick={() => setActiveTab('analyzer')}
+              className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                activeTab === 'analyzer'
+                  ? 'bg-white text-zinc-900 border border-zinc-200 shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Specification Audit</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('benchmark')}
+              className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                activeTab === 'benchmark'
+                  ? 'bg-white text-zinc-900 border border-zinc-200 shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Dataset Benchmarks</span>
+            </button>
+          </div>
+
+          {/* Service Status Badge */}
+          <div className="flex items-center gap-2 text-xs">
+            {backendStatus.loading ? (
+              <span className="text-zinc-500 font-mono text-[11px] flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" /> Connecting
+              </span>
+            ) : backendStatus.status === 'healthy' ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>Engine Online</span>
+              </div>
+            ) : (
+              <button
+                onClick={checkHealth}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-mono text-[11px] hover:border-rose-300 transition-colors"
+                title="Click to retry connection"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                <span>Offline (Retry)</span>
+              </button>
+            )}
+          </div>
+
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
-        
+
+        {/* Offline Warning Banner */}
+        {backendStatus.status === 'offline' && (
+          <div className="mb-6 p-4 rounded-md bg-rose-50 border border-rose-200 flex items-start justify-between gap-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-rose-900">Backend Engine Offline</p>
+                <p className="text-zinc-600 mt-0.5 leading-relaxed">
+                  Start the FastAPI backend with <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono border border-zinc-200">uvicorn app.main:app --port 8000</code> to enable live IEEE specification inspection.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={checkHealth}
+              className="px-2.5 py-1 rounded text-xs text-rose-700 hover:text-rose-900 bg-white hover:bg-rose-100 border border-rose-300 shrink-0 transition-colors font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Dismissible Error Alert */}
+        {errorMessage && (
+          <div className="mb-6 p-3.5 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-zinc-500 hover:text-zinc-800 p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {activeTab === 'analyzer' ? (
           <div>
-            {/* Hero Subheader */}
-            <div className="text-center max-w-3xl mx-auto mb-10">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-4">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Pre-Development Quality Assurance for Software SRS</span>
+            {/* Page Header */}
+            <div className="mb-6 pb-5 border-b border-zinc-200 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-semibold text-zinc-900 tracking-tight">
+                  Specification Quality Audit
+                </h1>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Automated static verification against IEEE 830 and ISO/IEC/IEEE 29148 standards.
+                </p>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
-                Analyze Requirements Before Writing Single Line of Code
-              </h2>
-              <p className="mt-3 text-sm md:text-base text-slate-400 font-normal leading-relaxed">
-                Detect ambiguity 🔴, incompleteness 🟠, non-testability 🔵, and weak wording 🟣 to eliminate costly miscommunications and rework.
-              </p>
+
+              {/* Quiet rule tags */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-zinc-600">
+                <span className="px-2 py-0.5 rounded bg-white border border-zinc-200 shadow-sm">Ambiguity</span>
+                <span className="px-2 py-0.5 rounded bg-white border border-zinc-200 shadow-sm">Incompleteness</span>
+                <span className="px-2 py-0.5 rounded bg-white border border-zinc-200 shadow-sm">Non-Testable</span>
+                <span className="px-2 py-0.5 rounded bg-white border border-zinc-200 shadow-sm">Weak Modals</span>
+              </div>
             </div>
 
-            {/* Document Uploader Component */}
+            {/* Document Uploader */}
             <DocumentUploader
               onAnalyzeText={handleAnalyzeText}
               onAnalyzeFile={handleAnalyzeFile}
               loading={loading}
+              isOffline={backendStatus.status === 'offline'}
             />
 
-            {/* Quality Intelligence Dashboard Results */}
+            {/* Analysis Results View */}
             {analysisData && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 
-                {/* Score Gauge & Breakdown Metrics */}
+                {/* Score & Health Dashboard */}
                 <QualityScoreCard data={analysisData} />
 
-                {/* Report Exporter Bar */}
+                {/* Export Report Actions Bar */}
                 <ReportExporter analysisData={analysisData} />
 
-                {/* Requirements Inspector Section Header */}
-                <div className="glass-card p-6 md:p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
+                {/* Requirements Inspection Log */}
+                <div className="surface-card rounded-lg border border-zinc-200 overflow-hidden bg-white shadow-sm">
                   
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                  {/* Log Header & Filter Controls */}
+                  <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                        <Layers className="w-5 h-5 text-indigo-400" />
-                        Requirements Audit Inspector
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Showing {filteredRequirements.length} of {analysisData.total_requirements} requirement items. Click "Why? & Fix" to view detailed root cause and rewrites.
+                      <h2 className="text-xs font-semibold text-zinc-900">
+                        Requirement Inspection Log
+                      </h2>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        Showing {filteredRequirements.length} of {analysisData.total_requirements} statements. Select any item to review defects and IEEE rewrites.
                       </p>
                     </div>
 
-                    {/* Search & Defect Filter Controls */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Search Bar */}
+                    {/* Filter and Search Bar */}
+                    <div className="flex items-center gap-2">
+                      {/* Search Input */}
                       <div className="relative">
-                        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search requirements..."
-                          className="bg-slate-950/80 border border-slate-800 focus:border-indigo-500 pl-9 pr-4 py-2 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48 sm:w-64 transition-all"
+                          placeholder="Search statements..."
+                          className="bg-white border border-zinc-200 focus:border-blue-500 pl-8 pr-7 py-1 rounded-md text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500/20 w-44 sm:w-56 transition-colors shadow-sm"
                         />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Filter Dropdown */}
-                      <div className="flex items-center gap-1.5 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
-                        <Filter className="w-3.5 h-3.5 text-indigo-400" />
+                      {/* Defect Filter Dropdown */}
+                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-zinc-200 text-xs shadow-sm">
+                        <Filter className="w-3 h-3 text-zinc-400" />
                         <select
                           value={defectFilter}
                           onChange={(e) => setDefectFilter(e.target.value)}
-                          className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer"
+                          className="bg-transparent text-zinc-800 font-medium focus:outline-none cursor-pointer"
                         >
-                          <option value="ALL" className="bg-slate-900">All Requirements</option>
-                          <option value="DEFECTIVE" className="bg-slate-900">Flagged Defects Only</option>
-                          <option value="CLEAR" className="bg-slate-900">Clear Requirements Only</option>
-                          <option value="is_ambiguous" className="bg-slate-900">🔴 Ambiguous</option>
-                          <option value="is_incomplete" className="bg-slate-900">🟠 Incomplete</option>
-                          <option value="is_untestable" className="bg-slate-900">🔵 Non-Testable</option>
-                          <option value="is_weak" className="bg-slate-900">🟣 Weak Wording</option>
+                          <option value="ALL">All Statements</option>
+                          <option value="DEFECTIVE">Defective Only</option>
+                          <option value="CLEAR">Compliant Only</option>
+                          <option value="is_ambiguous">Ambiguity</option>
+                          <option value="is_incomplete">Incompleteness</option>
+                          <option value="is_untestable">Non-Testable</option>
+                          <option value="is_weak">Weak Modality</option>
                         </select>
                       </div>
                     </div>
                   </div>
 
                   {/* Requirements List */}
-                  <div className="space-y-4">
+                  <div className="p-5 space-y-3">
                     {filteredRequirements.length === 0 ? (
-                      <div className="p-8 text-center bg-slate-950/40 rounded-2xl border border-slate-800/60">
-                        <p className="text-sm font-semibold text-slate-400">No requirements match the current filter or search criteria.</p>
+                      <div className="py-12 text-center text-zinc-400 text-xs">
+                        No requirement statements match the current filter or search query.
                       </div>
                     ) : (
                       filteredRequirements.map((req, idx) => (
@@ -275,7 +367,19 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center">
+          <div>
+            <div className="mb-6 p-4 rounded-md bg-white border border-zinc-200 shadow-sm flex items-start gap-3 text-xs text-zinc-800">
+              <div className="w-5 h-5 rounded bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                <BarChart3 className="w-3 h-3" />
+              </div>
+              <div className="leading-relaxed">
+                <span className="font-semibold text-zinc-900 block mb-0.5">Ground-Truth Benchmark Mode</span>
+                <p className="text-zinc-500">
+                  This panel evaluates model precision and recall against academic datasets (PROMISE NFR & EIRENE). For standard SRS audits, switch back to the <strong className="text-zinc-800">Specification Audit</strong> tab.
+                </p>
+              </div>
+            </div>
+
             <EvaluationPanel />
           </div>
         )}
@@ -283,9 +387,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-800/80 text-center text-xs text-slate-500 font-medium">
-        SpecSense AI — Pre-Development Quality Assurance Engine for Software Requirements
+      <footer className="border-t border-zinc-200 py-4 px-6 text-center text-[11px] text-zinc-500 font-mono bg-white">
+        SpecSense AI • Requirements Quality & Static Analysis Engine
       </footer>
+
     </div>
   );
 }

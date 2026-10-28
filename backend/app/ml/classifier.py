@@ -13,13 +13,13 @@ class RequirementClassifier:
     Requirement Quality & Defect Intelligence Classifier.
     Combines TF-IDF + Logistic Regression with rule-based explainability patterns.
     """
-    def __init__(self, model_dir: str = None):
+    def __init__(self, model_dir: str | None = None):
         if model_dir is None:
             model_dir = os.path.join(os.path.dirname(__file__), "models")
         self.model_dir = model_dir
         os.makedirs(self.model_dir, exist_ok=True)
-
         self.vectorizer = TfidfVectorizer(
+
             ngram_range=(1, 3),
             min_df=1,
             max_df=0.85,
@@ -125,8 +125,7 @@ class RequirementClassifier:
                     class_weight='balanced',
                     max_iter=500,
                     scoring='f1',
-                    n_jobs=-1,
-                    use_legacy_attributes=False
+                    n_jobs=-1
                 )
                 clf.fit(X_train_vec, y_train_cat)
 
@@ -204,12 +203,17 @@ class RequirementClassifier:
         Analyzes a single requirement sentence and returns detected defects, confidence, 
         explanations, business impact, highlights, and rewrites.
         """
+        if not text:
+            text = ""
+        text = text.encode('utf-8', 'ignore').decode('utf-8', 'ignore')
+
         defects = []
         deductions = 0
         highlights = []
 
         # Run rule-based heuristic checks for explainable features
         text_lower = text.lower()
+
         
         rule_hits = {}
         for category, rule_list in self.rules.items():
@@ -317,4 +321,3 @@ class RequirementClassifier:
             "defect_count": len(defects),
             "highlights": highlights
         }
-
