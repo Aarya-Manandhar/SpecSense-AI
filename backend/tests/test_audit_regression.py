@@ -623,14 +623,14 @@ def test_stage5_per_defect_explanation_fields(classifier):
 
 def test_stage5_heldout_documents_check(preprocessor):
     """
-    Stage 5 / Item 4: Held-out check on unseen domain (medical vital signs monitor).
+    Stage 5 / Item 4 & 5: Held-out check on authentic domain (NASA cFS Telemetry and Command Server).
     Asserts clean document scores 100 with 0 defects, defective document scores <= 70,
     and exclusion counts are correctly returned.
     """
     from app.api.endpoints import calculate_analysis_payload
 
-    clean_path = _PDF_DIR / "heldout_clean_medical_srs.txt"
-    defective_path = _PDF_DIR / "heldout_defective_medical_srs.txt"
+    clean_path = _PDF_DIR / "heldout_cfs_clean_srs.txt"
+    defective_path = _PDF_DIR / "heldout_cfs_defective_srs.txt"
 
     if not clean_path.exists() or not defective_path.exists():
         pytest.skip("Held-out test documents not found in test_data/")
@@ -657,6 +657,24 @@ def test_stage5_heldout_documents_check(preprocessor):
 
     # Significant separation
     assert clean_res.health_index - defective_res.health_index >= 30
+
+
+@pytest.mark.parametrize("clean_text", [
+    "The system shall compute digital signatures using the Secure Hash Algorithm SHA-256.",
+    "The database query shall order audit logs by the most recent session timestamp first.",
+    "The database shall join transaction records on the common identifier 'account_uuid'.",
+    "The network module shall authenticate incoming requests against the Common Vulnerabilities database.",
+    "When a user submits valid credentials, the system shall authenticate the user and display the dashboard within 2 seconds.",
+])
+def test_clean_contexts_zero_defects(classifier, clean_text):
+    """
+    False-positive check: verify that words 'common', 'most', and 'secure'
+    do NOT fire false positive defects when used in valid, verifiable, compliant contexts.
+    """
+    res = classifier.predict_sentence(clean_text)
+    assert res["score"] == 100, f"Expected 100, got {res['score']} with defects: {res['defects']}"
+    assert res["defect_count"] == 0, f"False positive detected: {res['defects']}"
+
 
 
 
