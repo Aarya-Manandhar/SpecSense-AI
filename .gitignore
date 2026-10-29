@@ -28,3 +28,10 @@ frontend/build/
 Thumbs.db
 .vscode/
 .idea/
+
+# test_data: exclude large binary uploads (PDFs); plain-text fixtures are tracked
+test_data/*.pdf
+test_data/*.docx
+
+# Condition 5: audit scratch files never committed
+preprocessor_ORIGINAL.py
