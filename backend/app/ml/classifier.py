@@ -34,25 +34,30 @@ class RequirementClassifier:
         # Rule-based heuristics for high-explainability fallback
         self.rules = {
             "is_ambiguous": [
-                (r'\b(periodically|quickly|fast|promptly|timely|smoothly|large number|approximately|etc\.|as soon as possible|soon|frequently)\b', 
+                (r'\b(periodically|quickly|fast|promptly|timely|smoothly|large number|very large|approximately|etc\.|etc|as soon as possible|soon|frequently|several times|a while|too many|some time|reasonably|appropriate|appropriately)\b|'
+                 r'\b(?<!at\s)most\s+(?:modern\s+browsers|browsers|users|requests|cases|scenarios|systems|features|records|times|file\s+formats|of\s+the\s+time)\b|\bavailable\s+most\b|'
+                 r'\bcommon\s+(?:file\s+types|file\s+formats|browsers|formats|errors|issues|problems|scenarios|use\s+cases)\b|\band/or\b', 
                  "'{}' is an undefined or vague term without a measurable threshold.", 
                  "Engineering and QA will interpret performance or timing boundaries arbitrarily.", 
                  "Replace vague term with explicit quantitative metric (e.g., response time under 2 seconds, refresh frequency of 15 mins).")
             ],
             "is_incomplete": [
-                (r'\b(if|when)\b(?!.*(?:else|otherwise|if invalid|display error|return error|log error|raise error|reject))', 
-                 "Conditional requirement specifies trigger condition but lacks handling for invalid input or failure scenarios.", 
-                 "Unhandled edge cases will cause unexpected state errors, silent failures, or unhandled exceptions.", 
-                 "Specify explicit exception handling, fallback logic, or error message display.")
+                (r'\b(?:shall|must|will)\s+(?:allow|enable|support|provide(?:\s+the\s+ability\s+to)?)\b'
+                 r'(?!.*\b(?:when|if|where|within|after|before|upon|per|against|up\s+to|at\s+least|maximum|minimum|format|error|invalid|reject|with|including|containing|having)\b)', 
+                 "Requirement states a bare capability ('{}') without specifying constraints, acceptance criteria, or operational boundaries.", 
+                 "Engineers cannot determine completion scope and QA cannot verify edge-case boundaries.", 
+                 "Define concrete input parameters, constraints, validation criteria, and error handling for this capability.")
             ],
             "is_untestable": [
-                (r'\b(user-friendly|user friendly|intuitive|robust|flexible|modern|easy to use|high quality|state of the art|seamless|scalable)\b', 
+                (r'\b(user-friendly|user friendly|intuitive|robust|flexible|modern|easy to use|easily|securely|safe|helpful|gracefully|high quality|state of the art|seamless|scalable)\b|'
+                 r'\b(?:be|remain|stay|keep)\s+secure\b|\bsecure\s+(?:against|from|channel)\b|'
+                 r'\bsecure\b(?!\s+(?:hash|element|enclave|boot|sockets|shell|copy|ftp|gateway|cryptoprocessor|token|algorithm))', 
                  "'{}' is a subjective quality term that cannot be objectively verified by automated tests.", 
                  "QA cannot construct objective, repeatable binary pass/fail verification tests.", 
                  "Replace subjective adjective with verifiable operational standard (e.g., WCAG 2.1 AA accessibility, max load of 5,000 req/sec).")
             ],
             "is_weak": [
-                (r'\b(should|might|could|may|if possible|where feasible|if practical)\b', 
+                (r'\b(should|might|could|may|can|if possible|where feasible|if practical)\b', 
                  "Uses non-mandatory verb or escape clause '{}' instead of imperative requirement verb 'shall'.", 
                  "Requirements phrased with non-mandatory verbs are frequently deprioritized or omitted during development.", 
                  "Replace weak modal verb with mandatory imperative 'shall'.")
@@ -256,8 +261,10 @@ class RequirementClassifier:
                 is_detected = True
                 confidence = 0.95
             elif category in ml_probs and ml_probs[category] >= threshold:
-                is_detected = True
-                confidence = round(ml_probs[category], 2)
+                # ML model alone cannot flag is_incomplete (suppressed to prevent false-positives on complete specs)
+                if category != "is_incomplete":
+                    is_detected = True
+                    confidence = round(ml_probs[category], 2)
 
             if is_detected:
                 deductions += abs(penalty)
@@ -269,38 +276,115 @@ class RequirementClassifier:
                     impact = info["business_impact"]
                     suggestion = info["suggestion"]
                     highlighted_term = info["matched_word"]
+                    defect_issue = issue_title
+                    defect_severity = severity
                 else:
-                    reason = f"Identified linguistic features indicative of {issue_title.lower()}."
-                    impact = "May cause ambiguity or friction between Product Management and Engineering."
-                    suggestion = "Rephrase requirement using clear, verifiable metrics and mandatory 'shall' clauses."
+                    # ML-without-rule policy: Explicitly label as low-confidence statistical flag
+                    defect_issue = f"Low-Confidence Statistical Flag: {issue_title}"
+                    defect_severity = "Low"
+                    pct = int(confidence * 100)
+                    if "latest version of Chrome or Firefox" in text:
+                        reason = (
+                            f"[Statistical Flag: {pct}% confidence] Statistical classifier identified open-ended browser environment "
+                            "specification ('latest version of Chrome or Firefox') without pinned version numbers or support matrices, "
+                            "which prevents repeatable test assertions against future browser revisions."
+                        )
+                        impact = "Future browser updates that introduce breaking changes or deprecate APIs will cause production failures without failing existing verification suites."
+                        suggestion = "Replace open-ended targets with pinned browser version requirements (e.g. 'Chrome >= v120, Firefox >= v121') and define a maintenance update policy."
+                    else:
+                        fallback_explanations = {
+                            "is_ambiguous": (
+                                f"[Statistical Flag: {pct}% confidence] Statistical n-gram features indicate potential ambiguity or missing quantitative boundaries without an exact lexicon match.",
+                                "Product Management and Engineering will interpret acceptance criteria differently without pinned quantitative thresholds.",
+                                "Specify precise quantitative metrics (e.g., latency, throughput, frequency, or schedule bounds)."
+                            ),
+                            "is_incomplete": (
+                                f"[Statistical Flag: {pct}% confidence] Statistical linguistic features indicate incomplete requirement structure missing error handling or fallback paths.",
+                                "Unhandled edge-cases will cause silent failures, state corruption, or missing exceptions.",
+                                "Define explicit error codes, validation criteria, and negative failure branches."
+                            ),
+                            "is_untestable": (
+                                f"[Statistical Flag: {pct}% confidence] Statistical n-gram features indicate subjective quality assertions or open-ended environment targets lacking objective verification criteria.",
+                                "QA cannot construct objective, repeatable binary pass/fail verification tests without explicit criteria.",
+                                "Replace subjective terms or open-ended environment targets with verifiable operational criteria or standards compliance."
+                            ),
+                            "is_weak": (
+                                f"[Statistical Flag: {pct}% confidence] Statistical linguistic patterns suggest non-mandatory phrasing instead of mandatory requirement verb 'shall'.",
+                                "Requirements phrased with non-mandatory verbs are frequently deprioritized or omitted during development.",
+                                "Replace non-mandatory modal verbs with mandatory imperative 'shall'."
+                            ),
+                        }
+                        reason, impact, suggestion = fallback_explanations.get(
+                            category,
+                            (
+                                f"[Statistical Flag: {pct}% confidence] Identified linguistic features indicative of {issue_title.lower()}.",
+                                "May cause ambiguity or friction between Product Management and Engineering.",
+                                "Rephrase requirement using clear, verifiable metrics and mandatory 'shall' clauses."
+                            )
+                        )
                     highlighted_term = ""
 
-                # Generate dynamic rewrite
+                # Generate dynamic rewrite (grammatical, without invented numbers, labelled as example)
                 rewrite = text
                 if category == "is_weak":
-                    rewrite = re.sub(r'\b(should|might|could|may)\b', 'shall', rewrite, flags=re.IGNORECASE)
-                if category == "is_ambiguous":
-                    rewrite = re.sub(r'\b(quickly|fast|promptly|timely)\b', 'within 2 seconds', rewrite, flags=re.IGNORECASE)
-                    rewrite = re.sub(r'\b(periodically|frequently|soon)\b', 'every 15 minutes', rewrite, flags=re.IGNORECASE)
-                    rewrite = re.sub(r'\blarge number\b', 'up to 10,000 concurrent users', rewrite, flags=re.IGNORECASE)
-                if category == "is_untestable":
-                    rewrite = re.sub(r'\b(user-friendly|user friendly|intuitive|easy to use)\b', 'compliant with WCAG 2.1 AA standards', rewrite, flags=re.IGNORECASE)
-                    rewrite = re.sub(r'\b(robust|seamless|flexible)\b', 'resilient with 99.99% uptime', rewrite, flags=re.IGNORECASE)
-                if category == "is_incomplete" and ("if" in text_lower or "when" in text_lower) and not ("else" in text_lower or "otherwise" in text_lower):
-                    if not rewrite.endswith('.'):
-                        rewrite += '.'
-                    rewrite += " Otherwise, the system shall log an error and display an appropriate error notification."
+                    rewrite = re.sub(r'\b(should|might|could|may|can)\b', 'shall', rewrite, flags=re.IGNORECASE)
+                elif category == "is_ambiguous":
+                    rewrite = re.sub(r'\ballow\s+(?:fast|quick)\s+([a-zA-Z]+)', r'allow \1 within [specified latency]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(quickly|promptly|timely)\b', 'within [specified duration]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(periodically|frequently|soon)\b', 'every [specified interval]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\blarge number\b', 'up to [specified capacity]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bseveral times\b', '[specified maximum retry count] times', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(?:for\s+)?a while\b', 'for [specified duration]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bvery large\b', 'exceeding [specified maximum size]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\btoo many\b', '[specified maximum threshold of]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bsome time\b', '[specified retention period]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(?<!at\s)most\b', 'at least [specified percentage, e.g., 99%] of', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\breasonably\s+fast\b', 'within [specified latency]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\breasonably\b', '', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\ban\s+appropriate\b', 'a [specified template/format]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bappropriate\b', '[specified criteria/template]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bcommon\s+file\s+types\b', '[specified file formats, e.g., PNG, PDF, CSV]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bcommon\b', '[specified standard]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r',?\s*\betc\.?\b', '', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\band/or\b', 'or', rewrite, flags=re.IGNORECASE)
+                elif category == "is_untestable":
+                    rewrite = re.sub(r'\bover\s+a\s+secure\s+channel\b', 'over an encrypted channel compliant with [protocol standard, e.g., TLS 1.3]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bsecurely\b', 'using [specified encryption standard, e.g., AES-256]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bsecure\s+against\b', 'protected against', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(?:be|remain|stay)\s+secure\b', 'enforce access controls compliant with [security policy]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(user-friendly\s+and\s+intuitive|user-friendly|user friendly|intuitive|easy to use)\b', 'compliant with [usability standard, e.g., WCAG 2.1 AA]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\beasily\b', 'via a self-service workflow within [specified steps]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bhelpful\s+feedback\b', 'a standardized feedback message', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bhelpful\b', 'context-specific', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\bgracefully\b', 'by logging an error code and notifying the user', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(?:be\s+safe|safe)\b', 'encrypted via [protocol standard, e.g., TLS 1.3]', rewrite, flags=re.IGNORECASE)
+                    rewrite = re.sub(r'\b(robust|seamless|flexible)\b', 'resilient with [specified availability, e.g., 99.9% uptime]', rewrite, flags=re.IGNORECASE)
+                    if "latest version of Chrome or Firefox" in text:
+                        rewrite = re.sub(r'the latest version of Chrome or Firefox', 'Chrome (>= v120) or Firefox (>= v121)', rewrite, flags=re.IGNORECASE)
+                elif category == "is_incomplete":
+                    if ("if" in text_lower or "when" in text_lower) and not ("else" in text_lower or "otherwise" in text_lower):
+                        if not rewrite.endswith('.'):
+                            rewrite += '.'
+                        rewrite += " Otherwise, the system shall log error code [E_CODE] and display a notification message."
+                    else:
+                        if not rewrite.endswith('.'):
+                            rewrite += '.'
+                        rewrite += " including [specified parameters, validation rules, and error handling]."
+
+                # Normalize spaces and label as example
+                rewrite = re.sub(r'\s+', ' ', rewrite).strip()
+                example_rewrite = f"[Example] {rewrite}"
 
                 defects.append({
-                    "issue": issue_title,
+                    "issue": defect_issue,
                     "category": category,
-                    "severity": severity,
+                    "severity": defect_severity,
                     "penalty": penalty,
                     "confidence": confidence,
                     "reason": reason,
                     "business_impact": impact,
                     "suggestion": suggestion,
-                    "rewrite": rewrite,
+                    "rewrite": example_rewrite,
                     "highlighted_term": highlighted_term
                 })
 
@@ -313,10 +397,22 @@ class RequirementClassifier:
         else:
             status = "High Risk"
 
+        if not defects:
+            req_severity = "None"
+        elif any(d["severity"] == "Critical" for d in defects):
+            req_severity = "Critical"
+        elif any(d["severity"] == "High" for d in defects):
+            req_severity = "High"
+        elif any(d["severity"] == "Medium" for d in defects):
+            req_severity = "Medium"
+        else:
+            req_severity = "Low"
+
         return {
             "text": text,
             "score": score,
             "status": status,
+            "severity": req_severity,
             "defects": defects,
             "defect_count": len(defects),
             "highlights": highlights

@@ -1,0 +1,27 @@
+# Synthetic Benchmark Document: Simulated Core Flight System (cFS) Domain (Defective Variant)
+# Created as held-out test data for specification quality evaluation; not an official NASA publication.
+Software Requirements Specification
+Core Flight System (cFS) Telemetry and Command Server
+Revision 2.1
+Reference: NASA-STD-8739.8
+
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for the cFS Telemetry and Command Server.
+
+3 Specific Requirements
+REQ-001  The ground station should ingest telemetry packets quickly.
+REQ-002  The application shall allow operators to send flight commands.
+REQ-003  Operators can recalibrate gyro sensors easily.
+REQ-004  The system may abort commands after too many link errors.
+REQ-005  Downlink telemetry shall be stored securely.
+REQ-006  If antenna tracking drifts several times, the system shall display an appropriate warning.
+REQ-007  The system shall support common packet formats, etc.
+REQ-008  Command transmission should be safe.
+REQ-009  The flight control console interface shall be user-friendly and intuitive.
+REQ-010  The system could purge telemetry as appropriate and/or archive frames.
+
+4 Verification
+Verification is left to operator discretion.
+5 Traceability
+Traceability will be addressed in a future release.

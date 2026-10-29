@@ -270,17 +270,37 @@ export default function App() {
             </div>
 
             {/* Document Uploader */}
-            <DocumentUploader
-              onAnalyzeText={handleAnalyzeText}
-              onAnalyzeFile={handleAnalyzeFile}
-              loading={loading}
-              isOffline={backendStatus.status === 'offline'}
-            />
+            <div className="print:hidden">
+              <DocumentUploader
+                onAnalyzeText={handleAnalyzeText}
+                onAnalyzeFile={handleAnalyzeFile}
+                loading={loading}
+                isOffline={backendStatus.status === 'offline'}
+              />
+            </div>
 
             {/* Analysis Results View */}
             {analysisData && (
               <div className="space-y-6">
                 
+                {/* Print-Only Audit Header */}
+                <div className="print-banner pb-4 mb-4 border-b-2 border-zinc-900 hidden print:block">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-lg font-bold text-zinc-900">SpecSense SRS Quality Audit Report</h1>
+                      <p className="text-xs text-zinc-600 mt-0.5">
+                        IEEE 830 &amp; ISO/IEC/IEEE 29148 Compliance Verification &bull; Document ID: {analysisData.document_id}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-zinc-900 font-mono">
+                        Health Index: {analysisData.health_index ?? analysisData.project_score}/100
+                      </div>
+                      <div className="text-xs text-zinc-600 font-medium">{analysisData.overall_status}</div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Score & Health Dashboard */}
                 <QualityScoreCard data={analysisData} />
 

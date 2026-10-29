@@ -69,3 +69,96 @@
   border-color: #2563eb;
   box-shadow: 0 0 0 1px #2563eb;
 }
+
+/* ==========================================================================
+   Stage 6: Print View & PDF Export Styling
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide interactive controls, uploaders, and navigation in print */
+  header,
+  footer,
+  .no-print,
+  button,
+  input,
+  select,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure card backgrounds and borders render cleanly */
+  .surface-card,
+  .surface-panel,
+  .surface-inset {
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    background-color: #ffffff !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 12pt !important;
+  }
+
+  /* Force display of collapsed defect diagnostics and rewrites in print view */
+  .print-expand {
+    display: block !important;
+    max-height: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Clear page breaks for major sections */
+  h1, h2, h3 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+    color: #111827 !important;
+  }
+
+  /* High contrast colors for score and severity badges */
+  .badge-critical {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border: 1px solid #f87171 !important;
+  }
+
+  .badge-high {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #fbbf24 !important;
+  }
+
+  .badge-medium {
+    background-color: #e0f2fe !important;
+    color: #075985 !important;
+    border: 1px solid #38bdf8 !important;
+  }
+
+  .badge-low {
+    background-color: #e0e7ff !important;
+    color: #3730a3 !important;
+    border: 1px solid #818cf8 !important;
+  }
+
+  .print-banner {
+    display: block !important;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 8pt;
+    margin-bottom: 14pt;
+  }
+}
+
+.print-banner {
+  display: none;
+}
+

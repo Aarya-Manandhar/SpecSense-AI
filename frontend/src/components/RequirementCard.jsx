@@ -15,6 +15,21 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
     scoreBadgeColor = 'text-amber-800 border-amber-200 bg-amber-50';
   }
 
+  const getSeverityBadgeStyle = (sev) => {
+    switch (sev) {
+      case 'Critical':
+        return 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+      case 'High':
+        return 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
+      case 'Medium':
+        return 'bg-sky-100 text-sky-800 border-sky-300 font-semibold';
+      case 'Low':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-300 font-medium';
+      default:
+        return 'bg-zinc-100 text-zinc-700 border-zinc-200';
+    }
+  };
+
   // Refined text highlighting for problematic keywords
   const renderHighlightedText = (originalText, highlightWords) => {
     if (!highlightWords || highlightWords.length === 0) {
@@ -67,15 +82,31 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
           </span>
 
           {defect_count === 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Compliant</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>Compliant</span>
+              </span>
+              <span className="font-mono text-[10px] tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
+                [None]
+              </span>
+            </div>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              <span>{defect_count} {defect_count === 1 ? 'Defect' : 'Defects'}</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                <span>{defect_count} {defect_count === 1 ? 'Defect' : 'Defects'}</span>
+              </span>
+              {item.severity && item.severity !== "None" ? (
+                <span className={`font-mono text-[10px] tracking-wider px-2 py-0.5 rounded border shadow-2xs ${getSeverityBadgeStyle(item.severity)}`}>
+                  [{item.severity}]
+                </span>
+              ) : (
+                <span className="font-mono text-[10px] tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  [None]
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -118,16 +149,16 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
         )}
 
         {/* Expanded Defect Diagnostics & Recommended Rewrite */}
-        {expanded && defects.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-zinc-100 space-y-3.5">
+        {defects.length > 0 && (
+          <div className={`mt-4 pt-4 border-t border-zinc-100 space-y-3.5 ${expanded ? 'block' : 'hidden print:block'}`}>
             {defects.map((def, i) => (
-              <div key={i} className="bg-zinc-50/70 p-4 rounded-md border border-zinc-200 space-y-3">
+              <div key={i} className="bg-zinc-50/70 p-4 rounded-md border border-zinc-200 space-y-3 print:bg-white print:border-zinc-300">
                 
                 {/* Defect Header */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-zinc-900">{def.issue}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-zinc-600 border border-zinc-200">
-                    Severity: {def.severity || 'Medium'}
+                  <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded border ${getSeverityBadgeStyle(def.severity || 'Medium')}`}>
+                    Severity: [{def.severity || 'Medium'}]
                   </span>
                 </div>
 
@@ -145,14 +176,14 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
 
                 {/* Recommended Rewrite */}
                 {def.rewrite && (
-                  <div className="p-3.5 rounded bg-blue-50/40 border border-blue-200/80">
+                  <div className="p-3.5 rounded bg-blue-50/40 border border-blue-200/80 print:bg-zinc-50 print:border-zinc-200">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-xs font-semibold text-blue-950 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span className="text-xs font-semibold text-blue-950 print:text-zinc-900 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600 print:hidden" />
                         <span>Recommended IEEE Revision:</span>
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 print:hidden">
                         <button
                           type="button"
                           onClick={() => handleCopy(def.rewrite, i)}
@@ -184,7 +215,7 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
                       </div>
                     </div>
 
-                    <p className="text-xs font-mono text-zinc-900 leading-relaxed bg-white p-2.5 rounded border border-blue-100 shadow-2xs">
+                    <p className="text-xs font-mono text-zinc-900 leading-relaxed bg-white p-2.5 rounded border border-blue-100 print:border-zinc-300 shadow-2xs">
                       "{def.rewrite}"
                     </p>
                   </div>

@@ -623,7 +623,7 @@ def test_stage5_per_defect_explanation_fields(classifier):
 
 def test_stage5_heldout_documents_check(preprocessor):
     """
-    Stage 5 / Item 4 & 5: Held-out check on authentic domain (NASA cFS Telemetry and Command Server).
+    Stage 5 / Item 4 & 5: Held-out check on synthetic cFS-domain specifications.
     Asserts clean document scores 100 with 0 defects, defective document scores <= 70,
     and exclusion counts are correctly returned.
     """

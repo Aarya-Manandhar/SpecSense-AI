@@ -6,6 +6,7 @@ from typing import List, Optional, Dict
 import uuid
 import csv
 import io
+import re
 import pandas as pd
 
 # Ensure backend root and workspace root are on sys.path
@@ -53,6 +54,7 @@ class RequirementAnalysisResult(BaseModel):
     text: str
     score: int
     status: str
+    severity: Optional[str] = "None"
     defects: List[DefectDetail]
     defect_count: int
     highlights: Optional[List[str]] = []
@@ -61,6 +63,7 @@ class RequirementAnalysisResult(BaseModel):
 class AnalysisResponse(BaseModel):
     document_id: str
     project_score: int
+    health_index: Optional[int] = None
     overall_status: str
     total_requirements: int
     defective_requirements_count: int
@@ -71,12 +74,21 @@ class AnalysisResponse(BaseModel):
     untestable_percentage: int
     weak_percentage: int
     counts_by_category: Dict[str, int]
+    counts_by_severity: Optional[Dict[str, int]] = None
+    exclusion_count: Optional[int] = 0
+    exclusion_summary: Optional[Dict[str, int]] = None
     requirements: List[RequirementAnalysisResult]
 
 
-def calculate_analysis_payload(sentences: List[str]) -> AnalysisResponse:
+def calculate_analysis_payload(
+    sentences: List[str],
+    exclusions: Optional[List[Dict[str, str]]] = None
+) -> AnalysisResponse:
     if not sentences:
         raise HTTPException(status_code=400, detail="No readable requirements found in document text.")
+
+    if exclusions is None:
+        exclusions = getattr(preprocessor, "exclusion_log", [])
 
     results = []
     total_score = 0
@@ -86,6 +98,12 @@ def calculate_analysis_payload(sentences: List[str]) -> AnalysisResponse:
         "is_incomplete": 0,
         "is_untestable": 0,
         "is_weak": 0
+    }
+    severity_counts = {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 0,
+        "Low": 0
     }
     clear_count = 0
 
@@ -98,12 +116,16 @@ def calculate_analysis_payload(sentences: List[str]) -> AnalysisResponse:
                 cat = d["category"]
                 if cat in cat_counts:
                     cat_counts[cat] += 1
+                sev = d.get("severity")
+                if sev in severity_counts:
+                    severity_counts[sev] += 1
         else:
             clear_count += 1
         results.append(analysis)
 
     total_reqs = len(sentences)
     project_score = round(total_score / total_reqs)
+    health_index = project_score
 
     if project_score >= 90:
         overall_status = "Ready for Development"
@@ -121,9 +143,18 @@ def calculate_analysis_payload(sentences: List[str]) -> AnalysisResponse:
     untestable_pct = round((cat_counts["is_untestable"] / total_reqs) * 100)
     weak_pct = round((cat_counts["is_weak"] / total_reqs) * 100)
 
+    # Summarize exclusions
+    exclusion_count = len(exclusions) if exclusions else 0
+    exclusion_summary: Dict[str, int] = {}
+    if exclusions:
+        for entry in exclusions:
+            reason = entry.get("reason", "other")
+            exclusion_summary[reason] = exclusion_summary.get(reason, 0) + 1
+
     return AnalysisResponse(
         document_id=f"doc_{uuid.uuid4().hex[:8]}",
         project_score=project_score,
+        health_index=health_index,
         overall_status=overall_status,
         total_requirements=total_reqs,
         defective_requirements_count=defective_count,
@@ -134,6 +165,9 @@ def calculate_analysis_payload(sentences: List[str]) -> AnalysisResponse:
         untestable_percentage=untestable_pct,
         weak_percentage=weak_pct,
         counts_by_category=cat_counts,
+        counts_by_severity=severity_counts,
+        exclusion_count=exclusion_count,
+        exclusion_summary=exclusion_summary,
         requirements=results
     )
 
@@ -289,7 +323,8 @@ def analyze_text(payload: TextAnalysisRequest):
         raise HTTPException(status_code=413, detail="Text payload exceeds maximum length limit (2MB).")
 
     sentences = preprocessor.extract_sentences(payload.text)
-    return calculate_analysis_payload(sentences)
+    exclusions = preprocessor.exclusion_log[:]
+    return calculate_analysis_payload(sentences, exclusions=exclusions)
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_file(file: UploadFile = File(...)):
@@ -308,38 +343,47 @@ async def analyze_file(file: UploadFile = File(...)):
         )
 
     sentences = preprocessor.extract_sentences(raw_text)
+    exclusions = preprocessor.exclusion_log[:]
     if not sentences:
         raise HTTPException(
             status_code=400,
             detail=f"Could not extract readable requirement statements from '{filename}'. The document may be image-based/scanned or contain non-standard formatting."
         )
-    return calculate_analysis_payload(sentences)
+    return calculate_analysis_payload(sentences, exclusions=exclusions)
 
 
 @router.post("/export/csv")
 def export_csv_report(payload: AnalysisResponse):
     """
-    Generates downloadable CSV file containing detailed requirement quality analysis.
+    Generates downloadable CSV file containing detailed requirement quality analysis
+    with UTF-8 BOM encoding for Excel compatibility and explicit Source IDs.
     """
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Requirement #", "Original Text", "Quality Score", "Status", 
-        "Defect Count", "Defect Issues", "Suggested Rewrites"
+        "Requirement #", "Source ID", "Requirement Text", "Quality Score", "Status", "Severity",
+        "Defect Count", "Defect Categories", "Defect Issues", "Example Rewrites"
     ])
 
     for idx, req in enumerate(payload.requirements, 1):
-        issues = ", ".join([d.issue for d in req.defects]) if req.defects else "None (Clear)"
+        # Extract explicit requirement ID if present, otherwise assign indexed ID
+        req_id_match = re.match(r'^(?:\[?(REQ-\d+)\]?)\b', req.text.strip(), flags=re.IGNORECASE)
+        source_id = req_id_match.group(1).upper() if req_id_match else f"REQ-{idx:03d}"
+        
+        cats = ", ".join(sorted(set([d.category for d in req.defects]))) if req.defects else "None"
+        issues = " | ".join([f"{d.issue} ({d.severity})" for d in req.defects]) if req.defects else "None (Compliant)"
         rewrites = " | ".join(set([d.rewrite for d in req.defects if d.rewrite != req.text])) if req.defects else req.text
+        
         writer.writerow([
-            idx, req.text, req.score, req.status, 
-            req.defect_count, issues, rewrites
+            idx, source_id, req.text, req.score, req.status, req.severity or "None",
+            req.defect_count, cats, issues, rewrites
         ])
 
-    csv_content = output.getvalue()
+    # Prepend UTF-8 Byte Order Mark (BOM) for seamless Microsoft Excel rendering
+    csv_content = "\ufeff" + output.getvalue()
     return Response(
         content=csv_content,
-        media_type="text/csv",
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename=specsense_analysis_{payload.document_id}.csv"}
     )
 

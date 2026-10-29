@@ -1,0 +1,29 @@
+# Synthetic Benchmark Document: Simulated Core Flight System (cFS) Domain
+# Created as held-out test data for specification quality evaluation; not an official NASA publication.
+Software Requirements Specification
+Core Flight System (cFS) Telemetry and Command Server
+Revision 2.1
+Reference: NASA-STD-8739.8
+
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for the cFS Telemetry and Command Server interfacing flight avionics with the ground operations console.
+1.2 Scope
+Covers command packet formatting, telemetry frame ingestion, cryptographic validation, and event log persistence.
+
+3 Specific Requirements
+REQ-001  When a telemetry packet is received from the space-to-ground link, the system shall verify the Reed-Solomon checksum within 50 milliseconds.
+REQ-002  If the packet checksum verification fails, the system shall discard the corrupted frame and increment error counter E104.
+REQ-003  When an uplink command is scheduled, the system shall compute digital signatures using the Secure Hash Algorithm SHA-256.
+REQ-004  If an operator submits an unauthorized flight command, the system shall reject the execution and record audit event A201.
+REQ-005  When flight telemetry indicates battery temperature exceeding 45 degrees Celsius, the system shall issue visual and acoustic alarms within 500 milliseconds.
+REQ-006  The database query shall order downlink telemetry by the most recent session timestamp first.
+REQ-007  The database shall join payload telemetry streams on the common identifier 'telemetry_apid'.
+REQ-008  When storage utilization reaches 90 percent of local capacity, the system shall transfer oldest archived frames to the tertiary tape storage within 10 minutes.
+REQ-009  If the primary ground link loses carrier lock, the system shall initiate automatic failover to the secondary antenna within 1.5 seconds.
+REQ-010  When downlink frames arrive out of order, the system shall reorder telemetry frames according to sequence counters prior to distributing packets to client displays.
+
+4 Verification
+Verification shall be performed via automated hardware-in-the-loop integration test harnesses.
+5 Traceability
+All requirements trace to NASA Mission Operations Directorate requirements document MOD-REQ-701.
