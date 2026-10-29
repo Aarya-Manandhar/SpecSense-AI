@@ -267,8 +267,11 @@ class RequirementClassifier:
                     confidence = round(ml_probs[category], 2)
 
             if is_detected:
-                deductions += abs(penalty)
-                
+                # ML-only statistical flags carry zero score penalty (display-only warning).
+                # Only rule-confirmed defects reduce the score.
+                if category in rule_hits:
+                    deductions += abs(penalty)
+
                 # Fetch explainability info
                 if category in rule_hits:
                     info = rule_hits[category]
