@@ -282,9 +282,9 @@ class RequirementClassifier:
                     defect_issue = issue_title
                     defect_severity = severity
                 else:
-                    # ML-without-rule policy: Explicitly label as low-confidence statistical flag
-                    defect_issue = f"Low-Confidence Statistical Flag: {issue_title}"
-                    defect_severity = "Low"
+                    # ML-without-rule policy: Explicitly label as advisory (no score impact)
+                    defect_issue = f"Advisory: {issue_title}"
+                    defect_severity = "Advisory"
                     pct = int(confidence * 100)
                     if "latest version of Chrome or Firefox" in text:
                         reason = (
@@ -382,13 +382,14 @@ class RequirementClassifier:
                     "issue": defect_issue,
                     "category": category,
                     "severity": defect_severity,
-                    "penalty": penalty,
+                    "penalty": penalty if category in rule_hits else 0,
                     "confidence": confidence,
                     "reason": reason,
                     "business_impact": impact,
                     "suggestion": suggestion,
                     "rewrite": example_rewrite,
-                    "highlighted_term": highlighted_term
+                    "highlighted_term": highlighted_term,
+                    "is_advisory": category not in rule_hits
                 })
 
         score = max(0, 100 - deductions)
@@ -402,14 +403,19 @@ class RequirementClassifier:
 
         if not defects:
             req_severity = "None"
-        elif any(d["severity"] == "Critical" for d in defects):
-            req_severity = "Critical"
-        elif any(d["severity"] == "High" for d in defects):
-            req_severity = "High"
-        elif any(d["severity"] == "Medium" for d in defects):
-            req_severity = "Medium"
         else:
-            req_severity = "Low"
+            # Exclude advisories from the requirement-level severity rollup
+            rule_defects = [d for d in defects if not d.get("is_advisory", False)]
+            if not rule_defects:
+                req_severity = "None"
+            elif any(d["severity"] == "Critical" for d in rule_defects):
+                req_severity = "Critical"
+            elif any(d["severity"] == "High" for d in rule_defects):
+                req_severity = "High"
+            elif any(d["severity"] == "Medium" for d in rule_defects):
+                req_severity = "Medium"
+            else:
+                req_severity = "Low"
 
         return {
             "text": text,

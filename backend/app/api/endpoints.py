@@ -48,6 +48,7 @@ class DefectDetail(BaseModel):
     suggestion: str
     rewrite: str
     highlighted_term: Optional[str] = ""
+    is_advisory: bool = False
 
 
 class RequirementAnalysisResult(BaseModel):
@@ -362,7 +363,8 @@ def export_csv_report(payload: AnalysisResponse):
     writer = csv.writer(output)
     writer.writerow([
         "Requirement #", "Source ID", "Requirement Text", "Quality Score", "Status", "Severity",
-        "Defect Count", "Defect Categories", "Defect Issues", "Example Rewrites"
+        "Defect Count", "Defect Categories", "Defect Issues", "Example Rewrites",
+        "Advisories (no score impact)"
     ])
 
     for idx, req in enumerate(payload.requirements, 1):
@@ -370,13 +372,17 @@ def export_csv_report(payload: AnalysisResponse):
         req_id_match = re.match(r'^(?:\[?(REQ-\d+)\]?)\b', req.text.strip(), flags=re.IGNORECASE)
         source_id = req_id_match.group(1).upper() if req_id_match else f"REQ-{idx:03d}"
         
-        cats = ", ".join(sorted(set([d.category for d in req.defects]))) if req.defects else "None"
-        issues = " | ".join([f"{d.issue} ({d.severity})" for d in req.defects]) if req.defects else "None (Compliant)"
-        rewrites = " | ".join(set([d.rewrite for d in req.defects if d.rewrite != req.text])) if req.defects else req.text
+        rule_defects = [d for d in req.defects if not getattr(d, 'is_advisory', False)]
+        advisory_defects = [d for d in req.defects if getattr(d, 'is_advisory', False)]
+        
+        cats = ", ".join(sorted(set([d.category for d in rule_defects]))) if rule_defects else "None"
+        issues = " | ".join([f"{d.issue} ({d.severity})" for d in rule_defects]) if rule_defects else "None (Compliant)"
+        rewrites = " | ".join(set([d.rewrite for d in rule_defects if d.rewrite != req.text])) if rule_defects else req.text
+        advisories = " | ".join([f"{d.issue}: {d.reason[:80]}" for d in advisory_defects]) if advisory_defects else ""
         
         writer.writerow([
             idx, source_id, req.text, req.score, req.status, req.severity or "None",
-            req.defect_count, cats, issues, rewrites
+            len(rule_defects), cats, issues, rewrites, advisories
         ])
 
     # Prepend UTF-8 Byte Order Mark (BOM) for seamless Microsoft Excel rendering

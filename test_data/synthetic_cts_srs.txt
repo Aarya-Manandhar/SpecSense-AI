@@ -1,10 +1,6 @@
-# Public held-out SRS for SpecSense audit
-# Source: Karl E. Wiegers & Joy Beatty, "Software Requirements" 3rd Ed. (Microsoft Press, 2013)
-# Chapter 12 sample requirements for the "Chemical Tracking System" (CTS) —
-# a worked example used throughout the book for teaching purposes.
-# These requirement statements appear verbatim or near-verbatim in the published text
-# and are reproduced here under fair use for academic/tool-testing purposes.
-# This file was NOT used in any SpecSense training, tuning, or calibration session.
+# Synthetic Benchmark Document — Chemical Tracking System (CTS) domain
+# Created by AI assistant for SpecSense regression testing; not verbatim published text from Wiegers/Beatty or official SRS.
+# Held-out document for audit evaluation.
 
 The system shall allow any user to request a container of a chemical.
 The system shall notify the requestor by email when the requested chemical becomes available.
@@ -31,3 +27,4 @@ The system should notify users of system downtime at least 24 hours in advance w
 The system may allow administrators to configure the email notification frequency.
 The system shall integrate with the corporate LDAP directory to authenticate users.
 The system shall prevent any user from viewing chemical inventory data unless they have been granted the Viewer role or higher.
+

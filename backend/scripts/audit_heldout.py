@@ -1,5 +1,5 @@
 """
-Run the SpecSense auditor on the Wiegers CTS held-out SRS and print per-line results.
+Run the SpecSense auditor on the synthetic CTS held-out SRS and print per-line results.
 """
 import sys
 import os
@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from backend.app.ml.preprocessor import RequirementPreprocessor
 from backend.app.ml.classifier import RequirementClassifier
 
-SRS_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'test_data', 'wiegers_cts_srs.txt')
+SRS_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'test_data', 'synthetic_cts_srs.txt')
 
 def main():
     with open(SRS_PATH, encoding='utf-8') as f:
@@ -21,7 +21,7 @@ def main():
     classifier.load_models()
 
     print(f"\n{'='*72}")
-    print("WIEGERS CHEMICAL TRACKING SYSTEM — Held-Out SRS Audit")
+    print("SYNTHETIC CHEMICAL TRACKING SYSTEM (CTS) — Held-Out SRS Audit")
     print(f"{'='*72}")
     print(f"Requirements extracted: {len(reqs)}")
     print(f"Lines excluded:         {len(preprocessor.exclusion_log)}")

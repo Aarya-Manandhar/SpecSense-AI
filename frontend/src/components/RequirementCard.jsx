@@ -7,6 +7,10 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
 
   const { text, score = 0, defects = [], defect_count = 0, highlights = [] } = item;
 
+  // Separate rule-confirmed defects from ML-only advisories
+  const ruleDefects = defects.filter(d => !d.is_advisory);
+  const advisoryDefects = defects.filter(d => d.is_advisory);
+
   // Determine score status styling
   let scoreBadgeColor = 'text-emerald-700 border-emerald-200 bg-emerald-50';
   if (score < 70) {
@@ -25,6 +29,8 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
         return 'bg-sky-100 text-sky-800 border-sky-300 font-semibold';
       case 'Low':
         return 'bg-indigo-100 text-indigo-800 border-indigo-300 font-medium';
+      case 'Advisory':
+        return 'bg-zinc-100 text-zinc-500 border-zinc-300 font-normal italic';
       default:
         return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
@@ -93,10 +99,23 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                <span>{defect_count} {defect_count === 1 ? 'Defect' : 'Defects'}</span>
-              </span>
+              {ruleDefects.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  <span>{ruleDefects.length} {ruleDefects.length === 1 ? 'Defect' : 'Defects'}</span>
+                </span>
+              )}
+              {ruleDefects.length === 0 && advisoryDefects.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span>Compliant</span>
+                </span>
+              )}
+              {advisoryDefects.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-zinc-50 text-zinc-500 border border-zinc-200 italic">
+                  <span>{advisoryDefects.length} {advisoryDefects.length === 1 ? 'Advisory' : 'Advisories'}</span>
+                </span>
+              )}
               {item.severity && item.severity !== "None" ? (
                 <span className={`font-mono text-[10px] tracking-wider px-2 py-0.5 rounded border shadow-2xs ${getSeverityBadgeStyle(item.severity)}`}>
                   [{item.severity}]
@@ -157,9 +176,15 @@ export default function RequirementCard({ index, item, onApplyRewrite }) {
                 {/* Defect Header */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-zinc-900">{def.issue}</span>
-                  <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded border ${getSeverityBadgeStyle(def.severity || 'Medium')}`}>
-                    Severity: [{def.severity || 'Medium'}]
-                  </span>
+                  {def.is_advisory ? (
+                    <span className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded border bg-zinc-100 text-zinc-500 border-zinc-300 italic">
+                      Advisory (no score impact)
+                    </span>
+                  ) : (
+                    <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded border ${getSeverityBadgeStyle(def.severity || 'Medium')}`}>
+                      Severity: [{def.severity || 'Medium'}]
+                    </span>
+                  )}
                 </div>
 
                 {/* Issue and QA Impact Grid */}
