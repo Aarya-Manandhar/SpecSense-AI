@@ -20,8 +20,19 @@ export default function QualityScoreCard({ data }) {
     counts_by_category = {},
     counts_by_severity = {},
     exclusion_count = 0,
-    exclusion_summary = {}
+    exclusion_summary = {},
+    warning_exclusion_count,
+    warning_exclusion_summary
   } = data;
+
+  const unnumberedCount = warning_exclusion_summary?.unnumbered_in_numbered ?? (exclusion_summary['unnumbered in numbered document'] || 0);
+  const duplicateCount = warning_exclusion_summary?.duplicate ?? (exclusion_summary['duplicate'] || 0);
+  const truncationCount = warning_exclusion_summary?.truncation ?? (
+    Object.entries(exclusion_summary || {})
+      .filter(([k]) => k.toLowerCase().includes('truncation'))
+      .reduce((acc, [, v]) => acc + v, 0)
+  );
+  const warningCount = warning_exclusion_count ?? (unnumberedCount + duplicateCount + truncationCount);
 
   // Determine score status styling
   let statusBadge = {
@@ -181,11 +192,37 @@ export default function QualityScoreCard({ data }) {
               </div>
             </div>
 
-            {/* Stage 5: Exclusion count & Scope Transparency */}
+            {/* Stage 5 & 6: Exclusion count & Scope Transparency with Warning Breakdown */}
             {exclusion_count > 0 && (
-              <div className="p-2.5 rounded bg-zinc-100/80 border border-zinc-200 text-[11px] text-zinc-600 flex items-center justify-between">
-                <span>Non-Requirement Lines Excluded:</span>
-                <span className="font-mono font-semibold text-zinc-800">{exclusion_count} items</span>
+              <div className="space-y-1.5">
+                <div className="p-2.5 rounded bg-zinc-100/80 border border-zinc-200 text-[11px] text-zinc-600 flex items-center justify-between">
+                  <span>Non-Requirement Lines Excluded:</span>
+                  <span className="font-mono font-semibold text-zinc-800">{exclusion_count} items</span>
+                </div>
+                {warningCount > 0 && (
+                  <div className="p-2.5 rounded bg-amber-50 border border-amber-200/90 text-[11px] text-amber-900 space-y-1.5 print:bg-white print:border-zinc-400">
+                    <div className="flex items-center justify-between font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 print:text-zinc-800" />
+                        <span>Scope Warnings:</span>
+                      </span>
+                      <span className="font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-200/60 border border-amber-300 text-amber-900 print:bg-zinc-100 print:border-zinc-400 print:text-zinc-900">
+                        {warningCount} {warningCount === 1 ? 'warning' : 'warnings'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-amber-800/90 space-y-0.5 pl-5 print:text-zinc-700">
+                      {unnumberedCount > 0 && (
+                        <div>&bull; {unnumberedCount} unnumbered statement{unnumberedCount > 1 ? 's' : ''} in numbered document</div>
+                      )}
+                      {duplicateCount > 0 && (
+                        <div>&bull; {duplicateCount} duplicate statement{duplicateCount > 1 ? 's' : ''} discarded</div>
+                      )}
+                      {truncationCount > 0 && (
+                        <div>&bull; {truncationCount} statement{truncationCount > 1 ? 's' : ''} truncated</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -78,6 +78,8 @@ class AnalysisResponse(BaseModel):
     counts_by_severity: Optional[Dict[str, int]] = None
     exclusion_count: Optional[int] = 0
     exclusion_summary: Optional[Dict[str, int]] = None
+    warning_exclusion_count: Optional[int] = 0
+    warning_exclusion_summary: Optional[Dict[str, int]] = None
     requirements: List[RequirementAnalysisResult]
 
 
@@ -147,10 +149,23 @@ def calculate_analysis_payload(
     # Summarize exclusions
     exclusion_count = len(exclusions) if exclusions else 0
     exclusion_summary: Dict[str, int] = {}
+    warning_summary: Dict[str, int] = {
+        "unnumbered_in_numbered": 0,
+        "duplicate": 0,
+        "truncation": 0,
+    }
     if exclusions:
         for entry in exclusions:
             reason = entry.get("reason", "other")
             exclusion_summary[reason] = exclusion_summary.get(reason, 0) + 1
+            if reason == "unnumbered in numbered document":
+                warning_summary["unnumbered_in_numbered"] += 1
+            elif reason == "duplicate":
+                warning_summary["duplicate"] += 1
+            elif "truncation" in reason.lower():
+                warning_summary["truncation"] += 1
+
+    warning_exclusion_count = sum(warning_summary.values())
 
     return AnalysisResponse(
         document_id=f"doc_{uuid.uuid4().hex[:8]}",
@@ -169,6 +184,8 @@ def calculate_analysis_payload(
         counts_by_severity=severity_counts,
         exclusion_count=exclusion_count,
         exclusion_summary=exclusion_summary,
+        warning_exclusion_count=warning_exclusion_count,
+        warning_exclusion_summary=warning_summary,
         requirements=results
     )
 
@@ -368,8 +385,12 @@ def export_csv_report(payload: AnalysisResponse):
     ])
 
     for idx, req in enumerate(payload.requirements, 1):
-        # Extract explicit requirement ID if present, otherwise assign indexed ID
-        req_id_match = re.match(r'^(?:\[?(REQ-\d+)\]?)\b', req.text.strip(), flags=re.IGNORECASE)
+        # Extract explicit requirement ID if present (REQ-001, FR-12, DEMO-SRS-53), otherwise assign indexed ID
+        req_id_match = re.match(
+            r'^(?:\[?([A-Z]{1,10}(?:[-_][A-Z0-9]+)*(?:[-_]\d+[A-Z0-9]*))\]?)(?:\s*:?\s+|$)',
+            req.text.strip(),
+            flags=re.IGNORECASE,
+        )
         source_id = req_id_match.group(1).upper() if req_id_match else f"REQ-{idx:03d}"
         
         rule_defects = [d for d in req.defects if not getattr(d, 'is_advisory', False)]

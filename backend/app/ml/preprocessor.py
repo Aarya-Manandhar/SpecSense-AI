@@ -29,10 +29,14 @@ class RequirementPreprocessor:
     """
 
     _REQ_ID_RE = re.compile(
-        r'^(?:\[(?P<b_id>REQ-\d+)\]|(?P<p_id>REQ-\d+))\s*:?\s*(?P<body>.+)$',
+        r'^(?:\[(?P<b_id>[A-Z]{1,10}(?:[-_][A-Z0-9]+)*(?:[-_]\d+[A-Z0-9]*))\]|'
+        r'(?P<p_id>[A-Z]{1,10}(?:[-_][A-Z0-9]+)*(?:[-_]\d+[A-Z0-9]*)))\s*:?\s*(?P<body>.+)$',
         re.IGNORECASE | re.DOTALL,
     )
-    _PLAIN_REQ_RE = re.compile(r'^(?:\[?REQ-\d+\]?)\b', re.IGNORECASE)
+    _PLAIN_REQ_RE = re.compile(
+        r'^(?:\[?(?:[A-Z]{1,10}(?:[-_][A-Z0-9]+)*(?:[-_]\d+[A-Z0-9]*))\]?)(?:\s*:?\s+|$)',
+        re.IGNORECASE,
+    )
 
     _MODAL_RE = re.compile(
         r'\b(shall|should|must|will|may|can|could)\b',
@@ -118,49 +122,71 @@ class RequirementPreprocessor:
     def _is_meta(self, line: str) -> bool:
         """Identifies document metadata, conventions, or boilerplates."""
         trimmed = line.strip()
+        # 1. Document metadata / convention statements (even if containing 'shall' / 'should')
         if re.match(
             r'^(?:The word [\'"]?shall[\'"]?|The word [\'"]?should[\'"]?'
             r'|Software Requirements Specification|Version\s+\d+'
-            r'|Table of Contents|Prepared in the structure|Revision History)',
+            r'|Table of Contents|Prepared in the structure|Revision History'
+            r'|Document\s+(?:Title|Author|Status|Version|Date|Control)'
+            r'|Author\s*:|Date\s*:|Version\s*:)',
             trimmed, re.IGNORECASE,
         ):
             return True
-        low = trimmed.lower()
-        if ("scope" in low or "overview" in low or "purpose" in low) and len(trimmed.split()) <= 4:
-            return True
+
+        # 2. Sentences containing modal requirement verbs reflect requirement intent; never treat as meta
+        if self._MODAL_RE.search(trimmed):
+            return False
+
+        # 3. Heading-level scope/overview/purpose markers without sentence-terminal punctuation
+        if not re.search(r'[.!?]$', trimmed):
+            if re.match(
+                r'^(?:[0-9.]+\s+)?(?:document\s+|product\s+|system\s+)?(?:scope|overview|purpose|conventions|definitions)\s*$',
+                trimmed,
+                re.IGNORECASE,
+            ):
+                return True
         return False
 
     def _is_section_4_5(self, line: str) -> bool:
-        """Identifies section 4 (Verification) and section 5 (Traceability) content."""
+        """
+        Identifies section 4 (Verification) and section 5 (Traceability) content
+        generically derived from section and matrix headings.
+        """
         trimmed = line.strip()
+        # Section 4/5 numbered or titled headings (e.g., "4 Verification", "Section 4", "5.0 Traceability Matrix")
         if re.match(
-            r'^(?:4\b|4\.\s|4\s+Verification|5\b|5\.\s|5\s+Traceability)',
+            r'^(?:#+\s*)?(?:section\s+)?(?:4|5)(?:\.[0-9]+)*\b(?:\s+verification|\s+qualification|\s+traceability|\s+matrix|\s*[:.-]|\s*$)',
             trimmed, re.IGNORECASE,
         ):
             return True
-        low = trimmed.lower()
-        if "verified by at least one test case" in low or "traceability" in low:
+        # Explicit verification or traceability matrix table/section headers
+        if re.match(
+            r'^(?:#+\s*)?(?:verification|traceability)\s+(?:matrix|table|method|criteria|procedure)\b',
+            trimmed, re.IGNORECASE,
+        ):
             return True
         return False
 
     def _is_appendix(self, line: str) -> bool:
-        """Identifies appendix lines, error code summaries, or error code rows."""
+        """Identifies appendix lines, annexes, or supplemental reference headings."""
         trimmed = line.strip()
-        if re.match(r'^(?:Appendix|App\.)\b', trimmed, re.IGNORECASE):
+        if re.match(r'^(?:#+\s*)?(?:appendix|annex)(?:\s+[a-z0-9]+)?\b', trimmed, re.IGNORECASE):
             return True
-        if any(k in trimmed for k in ['E101', 'E201', 'E301', 'E401', 'E501', 'E601', 'Error Code Summary']):
+        if re.match(r'^(?:#+\s*)?app\.\s+[a-z0-9]+\b', trimmed, re.IGNORECASE):
             return True
-        if re.match(r'^[E]\d{3}\s', trimmed):
+        if re.match(r'^(?:#+\s*)?(?:error\s+code\s+(?:summary|table|list)|appendix\s+table)\b', trimmed, re.IGNORECASE):
             return True
         return False
 
     def _is_noise(self, line: str) -> bool:
-        """Identifies page headers, footers, or empty/decorative noise."""
+        """Identifies page headers, footers, or empty/decorative noise generically."""
         trimmed = line.strip()
         return bool(
             re.match(
-                r'^(?:.*Task Tracker SRS.*|Page\s+\d+(\s+of\s+\d+)?|\d+\s+of\s+\d+|\d+$|[-=_.*#\s]+$'
-                r'|confidential(\s*-\s*internal\s+use\s+only)?)$',
+                r'^(?:page\s+\d+(\s+of\s+\d+)?|\d+\s+of\s+\d+|\d+$|[-=_.*#~]{3,}$|[-=_.*#\s]+$'
+                r'|confidential(\s*-\s*internal\s+use\s+only)?'
+                r'|proprietary(\s+and\s+confidential)?'
+                r'|internal\s+use\s+only|all\s+rights\s+reserved|draft\s*(?:v\d+[\d.]*)?)$',
                 trimmed, re.IGNORECASE,
             )
         )
@@ -206,14 +232,16 @@ class RequirementPreprocessor:
 
         # Indicators that unequivocally start a new structural item or list entry
         new_item_pattern = re.compile(
-            r'^(?:[\-*•]\s+|[0-9]+[.)]\s+|\[?[A-Z]{2,10}(?:[-_][0-9A-Z]*\d+[0-9A-Z]*)+\]?'
-            r'|REQ-[0-9]+|#+\s+)',
+            r'^(?:[\-*•]\s+|[0-9]+[.)]\s+|\[?[A-Z]{1,10}(?:[-_][A-Z0-9]+)*(?:[-_]\d+[A-Z0-9]*)\]?'
+            r'|#+\s+|appendix\b|annex\b)',
             re.IGNORECASE,
         )
         noise_pattern = re.compile(
             r'^(?:page\s+\d+(\s+of\s+\d+)?|\d+\s+of\s+\d+'
-            r'|table\s+of\s+contents|[-=_.*#\s]+$'
-            r'|confidential(\s*-\s*internal\s+use\s+only)?)$',
+            r'|table\s+of\s+contents|[-=_.*#~]{3,}$|[-=_.*#\s]+$'
+            r'|confidential(\s*-\s*internal\s+use\s+only)?'
+            r'|proprietary(\s+and\s+confidential)?'
+            r'|internal\s+use\s+only|all\s+rights\s+reserved|draft\s*(?:v\d+[\d.]*)?)$',
             re.IGNORECASE,
         )
         open_connector_pattern = re.compile(
@@ -345,12 +373,20 @@ class RequirementPreprocessor:
         )
 
         candidates = []
+        current_section = "main"
 
         if has_numbered_reqs:
             # ── Stage 2: Numbered-requirement rule ───────────────────────────
             for line in lines:
                 trimmed = line.strip()
-                if self._PLAIN_REQ_RE.match(trimmed):
+                if self._is_section_4_5(trimmed):
+                    current_section = "section_4_5"
+                elif self._is_appendix(trimmed):
+                    current_section = "appendix"
+                elif re.match(r'^(?:#+\s*)?(?:section\s+)?[1-3](?:\.[0-9]+)*\b', trimmed, re.IGNORECASE):
+                    current_section = "main"
+
+                if self._PLAIN_REQ_RE.match(trimmed) and current_section == "main":
                     norm_stmt, req_id = self._normalise_req_id(trimmed)
                     meta_entry = {
                         "id": req_id,
@@ -361,7 +397,12 @@ class RequirementPreprocessor:
                     self.requirement_metadata[norm_stmt] = meta_entry
                     candidates.append(norm_stmt)
                 else:
-                    reason = self._classify_exclusion_reason(line, in_numbered_doc=True)
+                    if current_section == "section_4_5":
+                        reason = "section 4/5"
+                    elif current_section == "appendix":
+                        reason = "appendix"
+                    else:
+                        reason = self._classify_exclusion_reason(line, in_numbered_doc=True)
                     self.exclusion_log.append({"line": line, "reason": reason})
         else:
             # ── Stage 2: Modal rule fallback ─────────────────────────────────
@@ -374,11 +415,21 @@ class RequirementPreprocessor:
                 if len(trimmed) < 12:
                     self.exclusion_log.append({"line": line, "reason": f"too short ({len(trimmed)} chars)"})
                     continue
+
                 if self._is_section_4_5(trimmed):
+                    current_section = "section_4_5"
+                elif self._is_appendix(trimmed):
+                    current_section = "appendix"
+                elif re.match(r'^(?:#+\s*)?(?:section\s+)?[1-3](?:\.[0-9]+)*\b', trimmed, re.IGNORECASE):
+                    current_section = "main"
+
+                if current_section == "section_4_5":
                     self.exclusion_log.append({"line": line, "reason": "section 4/5"})
                     continue
-                if self._is_appendix(trimmed):
+                if current_section == "appendix":
                     self.exclusion_log.append({"line": line, "reason": "appendix"})
+                    continue
+
                 if self._is_definition(trimmed):
                     self.exclusion_log.append({"line": line, "reason": "definition"})
                     continue
@@ -405,8 +456,19 @@ class RequirementPreprocessor:
                     for sent in doc.sents:
                         s_text = sent.text.strip()
                         s_cleaned = re.sub(r'^[\-*•]\s*', '', s_text).strip()
-                        if self._MODAL_RE.search(s_cleaned) and 12 <= len(s_cleaned) <= 600:
-                            candidates.append(s_cleaned)
+                        if self._MODAL_RE.search(s_cleaned):
+                            if len(s_cleaned) < 12:
+                                self.exclusion_log.append({
+                                    "line": s_text,
+                                    "reason": f"too short ({len(s_cleaned)} chars)",
+                                })
+                            elif len(s_cleaned) > 600:
+                                self.exclusion_log.append({
+                                    "line": s_text,
+                                    "reason": "truncation (exceeds 600 chars)",
+                                })
+                            else:
+                                candidates.append(s_cleaned)
                         else:
                             self.exclusion_log.append({
                                 "line": s_text,
@@ -428,8 +490,12 @@ class RequirementPreprocessor:
                 self.exclusion_log.append({"line": cand, "reason": "duplicate"})
                 continue
             seen.add(cand_lower)
-            filtered_reqs.append(cand)
             if len(filtered_reqs) >= max_requirements:
-                break
+                self.exclusion_log.append({
+                    "line": cand,
+                    "reason": "truncation (max requirements reached)",
+                })
+                continue
+            filtered_reqs.append(cand)
 
         return filtered_reqs
