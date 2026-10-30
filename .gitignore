@@ -18,6 +18,9 @@ frontend/dist/
 frontend/build/
 *.egg-info/
 
+# Duplicate notebook backend and model artifacts
+notebooks/backend/
+
 # Environment & local settings
 .env
 .env.local

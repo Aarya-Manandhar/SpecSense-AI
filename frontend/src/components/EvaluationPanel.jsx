@@ -142,6 +142,19 @@ export default function EvaluationPanel() {
             )}
           </div>
         </div>
+
+        <div className="px-5 pb-5">
+          <aside className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950">
+            <h3 className="font-semibold">Evaluation limitations</h3>
+            <p className="mt-1">
+              Classifiers were trained on synthetic requirements. In the current EIRENE annotated sample,
+              ambiguity reached 0.25 precision / 0.39 recall (199 annotations), weak modality reached 0.07
+              precision (30 annotations), and incompleteness had no true positives (59 annotations).
+              Untestability has no annotated EIRENE examples. Treat these results as an early validation signal;
+              performance may transfer poorly to other real SRS documents.
+            </p>
+          </aside>
+        </div>
       </div>
 
       {/* Benchmark Exploration Table */}

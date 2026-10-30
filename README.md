@@ -14,8 +14,6 @@
 
 ## Screenshots Showcase
 
-*(Place your application screenshots in the `docs/screenshots/` directory)*
-
 ### 1. Requirements Quality Dashboard & Live Scorecard
 > Unified audit dashboard displaying project-level health score, risk categorization (Low / Moderate / Critical Risk), and categorized defect distribution.
 <p align="center">
@@ -45,6 +43,14 @@
 <p align="center">
   <img src="docs/screenshots/benchmark_panel.png" alt="Empirical Benchmark Panel" width="90%" />
 </p>
+
+---
+
+## Evaluation & Limitations
+
+The project score is driven by rule-based detections. ML-only flags are labeled **Advisory** and do not reduce the score. On the current EIRENE annotated set, ambiguity detection had **0.25 precision** and **0.39 recall** (199 annotated examples: 18 true positives, 54 false positives, and 28 false negatives). Weak-modality precision was **0.07** across 30 annotated examples (2 true positives and 28 false positives). Incompleteness had **no true positives** across 59 annotated examples (2 false positives and 7 false negatives). The current EIRENE set has no annotated examples for untestability, so that category has no real-data precision or recall result.
+
+The classifiers were trained on synthetic requirements. These small real-data results show limited transfer to real SRS documents, especially for ambiguity, weak modality, and incompleteness. Future work is to train and validate with a larger, independently annotated set of real requirements.
 
 ---
 
@@ -143,11 +149,9 @@ Open your browser and navigate to: **`http://localhost:5173`**
 
 ---
 
-## Running Tests
+## Docker Compose Deployment
 
-### 3. Unified Production Deployment (Docker Compose) 
-
-Deploy both the backend engine and production-optimized frontend with a single command:
+Run the backend and frontend in containers:
 
 ```bash
 # Build and run all services in the background
@@ -168,7 +172,7 @@ docker compose down
 
 ---
 
-## Running Tests & CI Pipeline
+## Testing & CI
 
 ### Backend Unit & Integration Tests
 ```bash
@@ -212,9 +216,9 @@ Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows
 
 Contributions are welcome!
 1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch (`git checkout -b feature/your-change`)
+3. Commit your changes (`git commit -m 'Describe your change'`)
+4. Push your branch (`git push origin feature/your-change`)
 5. Open a Pull Request
 
 ---
