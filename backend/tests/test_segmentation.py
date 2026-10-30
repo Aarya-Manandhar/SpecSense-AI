@@ -216,3 +216,69 @@ def test_duplicate_and_truncation_exclusions_tracked(preprocessor):
     reasons = [e["reason"] for e in preprocessor.exclusion_log]
     assert "duplicate" in reasons, f"Expected duplicate in {reasons}"
 
+
+def test_section_4_system_features_not_excluded(preprocessor):
+    """
+    A document with no REQ- IDs where Section 4 is '4 System Features' containing real
+    shall requirements. They must be kept because exclusion is strictly based on heading
+    titles (Verification/Traceability), NOT section numbers like '4'.
+    """
+    raw = (
+        "1 Scope and Purpose\n"
+        "The system shall authenticate users with corporate SSO.\n"
+        "4 System Features\n"
+        "The system shall generate real-time metrics for each active worker.\n"
+        "The system shall export batch reports in CSV format.\n"
+        "5 Performance and Security\n"
+        "The system shall respond to API queries within 250 milliseconds.\n"
+        "6 Verification Procedures\n"
+        "Every endpoint shall be verified through automated regression testing.\n"
+    )
+    sents = preprocessor.extract_sentences(raw)
+    assert len(sents) == 4, f"Expected 4 requirements from sections 1, 4, and 5, got {len(sents)}: {sents}"
+    assert "The system shall authenticate users with corporate SSO." in sents
+    assert "The system shall generate real-time metrics for each active worker." in sents
+    assert "The system shall export batch reports in CSV format." in sents
+    assert "The system shall respond to API queries within 250 milliseconds." in sents
+    # Verification procedure under section 6 should be excluded
+    assert not any("automated regression testing" in s for s in sents)
+    reasons = [e["reason"] for e in preprocessor.exclusion_log]
+    assert "section 4/5" in reasons
+
+
+def test_stray_id_does_not_switch_to_numbered_mode(preprocessor):
+    """
+    Requires at least 3 ID-bearing lines (or >50% of candidate requirements)
+    before switching to numbered mode. A document with one stray 'ISO-9001 ...'
+    line or standard reference must remain in modal fallback mode and retain
+    all unnumbered requirements.
+    """
+    raw = (
+        "The system shall encrypt all sensitive customer records at rest.\n"
+        "The system shall notify the user immediately upon password expiration.\n"
+        "The application shall conform to ISO-9001 quality guidelines.\n"
+        "The system shall log unauthorized access attempts.\n"
+    )
+    sents = preprocessor.extract_sentences(raw)
+    # Should stay in unnumbered/modal mode and extract all 4 valid requirements
+    assert len(sents) == 4, f"Expected all 4 requirements in modal mode, got {len(sents)}: {sents}"
+    # Should not have any 'unnumbered in numbered document' exclusions
+    reasons = [e["reason"] for e in preprocessor.exclusion_log]
+    assert "unnumbered in numbered document" not in reasons
+
+
+def test_over_300_requirements_truncation_warning(preprocessor):
+    """
+    Document with >300 requirements triggers truncation warning and logs
+    'truncation (max requirements reached)' in exclusion_log.
+    """
+    lines = [f"REQ-{i:04d} The system shall process transaction record {i}." for i in range(1, 325)]
+    raw = "\n".join(lines)
+    sents = preprocessor.extract_sentences(raw, max_requirements=300)
+    assert len(sents) == 300, f"Expected exactly 300 requirements, got {len(sents)}"
+    reasons = [e["reason"] for e in preprocessor.exclusion_log]
+    assert any("truncation" in r for r in reasons), f"Expected truncation in reasons: {set(reasons)}"
+    truncation_count = sum(1 for r in reasons if "truncation" in r)
+    assert truncation_count == 24, f"Expected 24 truncated requirements, got {truncation_count}"
+
+

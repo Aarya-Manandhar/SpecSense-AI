@@ -149,23 +149,25 @@ class RequirementPreprocessor:
 
     def _is_section_4_5(self, line: str) -> bool:
         """
-        Identifies section 4 (Verification) and section 5 (Traceability) content
-        generically derived from section and matrix headings.
+        Identifies verification or traceability section headings.
+        Exclusion is strictly based on heading titles (Verification, Qualification,
+        Traceability), NOT on arbitrary section numbers like '4' or '5', ensuring
+        structures where Section 4 or 5 contains functional requirements
+        (e.g., '4 System Features') are never dropped.
         """
         trimmed = line.strip()
-        # Section 4/5 numbered or titled headings (e.g., "4 Verification", "Section 4", "5.0 Traceability Matrix")
-        if re.match(
-            r'^(?:#+\s*)?(?:section\s+)?(?:4|5)(?:\.[0-9]+)*\b(?:\s+verification|\s+qualification|\s+traceability|\s+matrix|\s*[:.-]|\s*$)',
-            trimmed, re.IGNORECASE,
-        ):
-            return True
-        # Explicit verification or traceability matrix table/section headers
-        if re.match(
-            r'^(?:#+\s*)?(?:verification|traceability)\s+(?:matrix|table|method|criteria|procedure)\b',
-            trimmed, re.IGNORECASE,
-        ):
-            return True
-        return False
+        # Must contain verification, qualification, or traceability in the heading title
+        # e.g., "4 Verification", "Section 4: Verification", "4.0 Verification Matrix",
+        # "5 Traceability", "Section 5 - Traceability Matrix", "Qualification Procedures"
+        return bool(
+            re.match(
+                r'^(?:#+\s*)?(?:(?:section\s+)?[0-9]+(?:\.[0-9]+)*\s*[:.-]?\s*)?'
+                r'(?:verification(?:\s+and\s+validation)?|qualification|traceability)'
+                r'(?:\s+(?:matrix|table|method|methods|criteria|procedure|procedures|section))?\s*[:.-]?\s*$',
+                trimmed,
+                re.IGNORECASE,
+            )
+        )
 
     def _is_appendix(self, line: str) -> bool:
         """Identifies appendix lines, annexes, or supplemental reference headings."""
@@ -367,9 +369,21 @@ class RequirementPreprocessor:
         cleaned_raw = self.clean_text(raw_text)
         lines = self._unwrap_text(cleaned_raw)
 
-        # Detect whether the document uses numbered requirements
-        has_numbered_reqs = any(
-            bool(self._PLAIN_REQ_RE.match(l.strip())) for l in lines
+        # Detect whether the document uses numbered requirements:
+        # Require at least 3 ID-bearing lines OR >50% of candidate modal lines
+        id_bearing_count = sum(
+            1 for l in lines if bool(self._PLAIN_REQ_RE.match(l.strip()))
+        )
+        modal_candidate_count = sum(
+            1 for l in lines
+            if len(l.strip()) >= 12
+            and bool(self._MODAL_RE.search(l.strip()))
+            and not self._is_heading(l.strip())
+            and not self._is_noise(l.strip())
+        )
+        has_numbered_reqs = (
+            id_bearing_count >= 3
+            or (modal_candidate_count > 0 and (id_bearing_count / modal_candidate_count) > 0.5)
         )
 
         candidates = []
@@ -383,7 +397,7 @@ class RequirementPreprocessor:
                     current_section = "section_4_5"
                 elif self._is_appendix(trimmed):
                     current_section = "appendix"
-                elif re.match(r'^(?:#+\s*)?(?:section\s+)?[1-3](?:\.[0-9]+)*\b', trimmed, re.IGNORECASE):
+                elif self._is_heading(trimmed):
                     current_section = "main"
 
                 if self._PLAIN_REQ_RE.match(trimmed) and current_section == "main":
@@ -420,7 +434,7 @@ class RequirementPreprocessor:
                     current_section = "section_4_5"
                 elif self._is_appendix(trimmed):
                     current_section = "appendix"
-                elif re.match(r'^(?:#+\s*)?(?:section\s+)?[1-3](?:\.[0-9]+)*\b', trimmed, re.IGNORECASE):
+                elif self._is_heading(trimmed):
                     current_section = "main"
 
                 if current_section == "section_4_5":
