@@ -1,6 +1,6 @@
 # Screenshots Directory
 
-Save your captured application screenshots here with the following filenames:
+
 
 1. `dashboard_overview.png` - Main dashboard showing document upload / paste area, health score card, and category breakdown.
 2. `analysis_results.png` - Sentence-level cards with defect badges (Ambiguous, Weak, Untestable, Incomplete), confidence %, and highlighted triggers.
