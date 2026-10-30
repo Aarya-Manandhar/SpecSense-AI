@@ -6,7 +6,6 @@
 [![scikit--learn](https://img.shields.io/badge/scikit--learn-1.7.1-F7931E.svg?style=flat&logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
 [![SpaCy](https://img.shields.io/badge/spaCy-3.6+-09A3D5.svg?style=flat&logo=spacy&logoColor=white)](https://spacy.io)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **SpecSense AI** is an automated **Requirements Engineering Intelligence platform** that detects defects in Software Requirements Specifications (SRS), quantifies document health with an aggregate Risk Index, highlights flaw triggers, and generates targeted, testable rewrites in real time.
 
@@ -223,6 +222,3 @@ Contributions are welcome!
 
 ---
 
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
