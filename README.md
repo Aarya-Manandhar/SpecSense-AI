@@ -1,4 +1,4 @@
-# SpecSense AI — Requirements Intelligence Engine 🚀
+# SpecSense AI — Requirements Intelligence Engine
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.0+-61DAFB.svg?style=flat&logo=react&logoColor=black)](https://reactjs.org)
@@ -12,7 +12,7 @@
 
 ---
 
-## 📸 Screenshots Showcase
+## Screenshots Showcase
 
 *(Place your application screenshots in the `docs/screenshots/` directory)*
 
@@ -48,7 +48,7 @@
 
 ---
 
-## ⚡ Key Capabilities
+## Key Capabilities
 
 - 📄 **Multi-Format Ingestion**: Ingest and parse `.txt`, `.docx`, and `.pdf` SRS documents or paste freeform specifications directly into the analyzer.
 - 🎯 **Multi-Label Defect Detection**:
@@ -62,7 +62,7 @@
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -86,7 +86,7 @@ graph TD
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Python 3.12.16** (see `.python-version`)
@@ -143,9 +143,9 @@ Open your browser and navigate to: **`http://localhost:5173`**
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
-### 3. Unified Production Deployment (Docker Compose) 🐳
+### 3. Unified Production Deployment (Docker Compose) 
 
 Deploy both the backend engine and production-optimized frontend with a single command:
 
@@ -168,7 +168,7 @@ docker compose down
 
 ---
 
-## 🧪 Running Tests & CI Pipeline
+## Running Tests & CI Pipeline
 
 ### Backend Unit & Integration Tests
 ```bash
@@ -185,7 +185,7 @@ Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows
 
 ---
 
-## 📡 API Endpoints Summary
+## API Endpoints Summary
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -199,22 +199,7 @@ Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows
 
 ---
 
-## 📋 Production Readiness Status
-
-| Category | Status | Details |
-| :--- | :---: | :--- |
-| **Core ML Pipeline** | ✅ Production Ready | Multi-label models trained, serialized, and integrated with linguistic fallbacks |
-| **Document Parser** | ✅ Hardened | Supports TXT, PDF, DOCX with 15MB limits, format whitelist, and sanitization |
-| **Web UI / UX** | ✅ Production Ready | Interactive dashboard, defect highlights, live rewrites, CSV export & responsive design |
-| **Containerization** | ✅ Production Ready | Dockerfiles for backend and frontend with Nginx proxy & `docker-compose.yml` |
-| **CI / CD Pipeline** | ✅ Automated | GitHub Actions workflow for automated test runs and frontend builds |
-| **Security & Headers** | ✅ Hardened | Strict transport security, X-Frame-Options, X-Content-Type-Options, configurable CORS |
-| **Error Handling & Logs** | ✅ Hardened | Structured logging, request timing headers, global 500 exception sanitizer |
-| **User Auth / Multi-tenant**| ℹ️ Optional (SaaS) | Can be added if multi-user accounts / billing are required in the future |
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: FastAPI, Uvicorn, Pydantic, Scikit-learn, SpaCy, Pandas, PyPDF, python-docx
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons
@@ -223,7 +208,7 @@ Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome!
 1. Fork the Project
