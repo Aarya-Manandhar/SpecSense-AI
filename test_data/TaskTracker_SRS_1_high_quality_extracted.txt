@@ -1,0 +1,153 @@
+Software Requirements Specification
+ Task Tracker Web Application
+ Version 1.0
+ Prepared in the structure of ISO/IEC/IEEE 29148:2018
+
+Task Tracker SRS v1.0
+Page 2
+Revision History
+Version
+Date
+Author
+Description
+1.0
+26 October 2026
+Requirements Team
+Initial release
+Table of Contents
+1 Introduction
+2 Overall Description
+3 Specific Requirements
+4 Verification
+5 Traceability
+Appendix A: Error Code Summary
+
+Task Tracker SRS v1.0
+Page 3
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for Task Tracker, a web application for creating,
+assigning and tracking tasks within a team. It is written for developers, testers, project managers and
+product owners.
+1.2 Scope
+Task Tracker allows registered users to manage tasks, attach files, receive notifications and export task
+data. It does not include time tracking, billing or a native mobile application.
+1.3 Definitions, Acronyms and Abbreviations
+ Task: A unit of work with a title, status, assignee and due date.
+ Assignee: The user responsible for completing a task.
+ Administrator: A user with permission to manage user accounts.
+ CSV: Comma Separated Values.
+ SRS: Software Requirements Specification.
+ TLS: Transport Layer Security.
+ UTC: Coordinated Universal Time.
+1.4 Conventions
+The word "shall" marks a mandatory requirement. Each requirement has a unique identifier in the form
+REQ-xxx.
+2 Overall Description
+2.1 Product Perspective
+Task Tracker is a standalone web application. It uses a relational database for storage and an external
+email server for notifications.
+2.2 Product Functions
+The product provides account management, task management, attachments, notifications, filtering and
+export.
+2.3 User Characteristics
+Regular users need basic web browsing skills. Administrators need to understand user roles and account
+management.
+2.4 Assumptions and Dependencies
+The email server is assumed to be reachable from the application server. The system depends on a
+relational database that supports transactions.
+3 Specific Requirements
+
+Task Tracker SRS v1.0
+Page 4
+3.1 Authentication
+REQ-001  When a user submits valid credentials, the system shall authenticate the user and display the
+dashboard within 2 seconds.
+REQ-002  If a user submits invalid credentials, the system shall reject the login and display error message
+E101.
+REQ-003  If a user enters invalid credentials 5 consecutive times, the system shall lock the account for 15
+minutes.
+REQ-004  When a user requests a password reset, the system shall send a reset link to the registered
+email within 60 seconds.
+REQ-005  If a user session is inactive for 30 minutes, the system shall terminate the session and redirect
+the user to the login page.
+3.2 Task Management
+REQ-006  When a user creates a task with a title of 1 to 100 characters, the system shall save the task
+and assign it a unique ID.
+REQ-007  If a user submits a task with an empty title, the system shall reject the task and display error
+message E201.
+REQ-008  When a user assigns a task to another registered user, the system shall record the assignee
+and notify that user by email within 5 minutes.
+REQ-009  If a user assigns a task to an unregistered email address, the system shall reject the
+assignment and display error message E203.
+REQ-010  When a user marks a task as complete, the system shall record the completion date and time in
+UTC.
+REQ-011  When a user deletes a task, the system shall move the task to the trash and retain it for 30
+days.
+REQ-012  If a task has remained in the trash for more than 30 days, the system shall permanently delete
+the task.
+REQ-013  When a user restores a task from the trash within 30 days, the system shall return the task to its
+previous status.
+3.3 Filtering and Search
+REQ-014  When a user filters tasks by status, the system shall display only matching tasks within 1
+second.
+REQ-015  When a user searches for a keyword, the system shall return all tasks whose title or description
+contains the keyword, ignoring letter case.
+REQ-016  If no task matches the filter or search, the system shall display the message "No tasks found".
+3.4 Attachments
+REQ-017  When a user uploads an attachment of up to 10 MB, the system shall store the file and link it to
+the selected task.
+REQ-018  If a user uploads an attachment larger than 10 MB, the system shall reject the file and display
+error message E301.
+
+Task Tracker SRS v1.0
+Page 5
+REQ-019  If a user uploads a file type other than PDF, PNG, JPG or DOCX, the system shall reject the file
+and display error message E302.
+REQ-020  If an uploaded file fails the virus scan, the system shall delete the file and display error message
+E303.
+3.5 Notifications
+REQ-021  When a task due date is reached, the system shall send an email notification to the assignee
+within 5 minutes.
+REQ-022  If the email server is unavailable, the system shall retry the notification 3 times at 10-minute
+intervals.
+REQ-023  If all 3 notification retries fail, the system shall record the failure in the error log with error code
+E401.
+3.6 Export
+REQ-024  When a user exports tasks to CSV, the system shall generate the file within 10 seconds for up
+to 5000 tasks.
+REQ-025  If an export contains more than 5000 tasks, the system shall reject the request and display error
+message E501.
+3.7 Performance, Security and Reliability
+REQ-026  When 1000 concurrent users are connected, the system shall respond to 95 percent of requests
+within 2 seconds.
+REQ-027  The system shall encrypt all stored user passwords using the bcrypt algorithm with a cost factor
+of at least 12.
+REQ-028  The system shall transmit all data between client and server using TLS 1.2 or higher.
+REQ-029  The system shall be available 99.5 percent of the time, measured monthly, excluding planned
+maintenance.
+REQ-030  If the database connection fails, the system shall display error message E601 and retry the
+connection every 5 seconds.
+3.8 Compatibility and Usability
+REQ-031  The system shall run on the latest stable versions of Chrome, Firefox and Edge, as defined on 1
+January 2026.
+REQ-032  The system shall meet the WCAG 2.1 Level AA accessibility guidelines.
+4 Verification
+Each requirement shall be verified by at least one test case, inspection or analysis recorded in the Task
+Tracker Verification Plan.
+5 Traceability
+Each requirement shall be traced to a user need and to at least one verification test case. Requirement
+changes shall be recorded with author, date and description in the revision history.
+
+Task Tracker SRS v1.0
+Page 6
+Appendix A: Error Code Summary
+ E101: Invalid credentials.
+ E201: Empty task title.
+ E203: Unregistered assignee.
+ E301: Attachment too large.
+ E302: Unsupported file type.
+ E303: Attachment failed virus scan.
+ E401: Email notification failure.
+ E501: Export too large.
+ E601: Database connection failure.

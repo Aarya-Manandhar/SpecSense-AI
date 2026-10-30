@@ -20,6 +20,9 @@ def test_health():
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+    short_response = client.get("/health")
+    assert short_response.status_code == 200
+    assert short_response.json()["status"] == "healthy"
 
 def test_analyze_text():
     sample_text = (

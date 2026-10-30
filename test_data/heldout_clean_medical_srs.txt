@@ -1,0 +1,29 @@
+Software Requirements Specification
+CareTrack Patient Vitals Monitoring System
+Version 1.0
+
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for CareTrack ICU, an embedded telemetry system monitoring vital signs in intensive care units.
+1.2 Scope
+CareTrack monitors ECG, SpO2, blood pressure, and core temperature. It raises visual and audible alarms when thresholds are breached.
+1.3 Conventions
+The word "shall" marks a mandatory requirement. Each requirement has a unique identifier in the form REQ-xxx.
+
+3 Specific Requirements
+REQ-001 When heart rate exceeds 120 beats per minute, the system shall trigger visual and audible alarms within 500 milliseconds.
+REQ-002 If the primary SpO2 sensor disconnects, the system shall switch to the secondary sensor within 200 milliseconds and log alert code A101.
+REQ-003 If SpO2 measurement drops below 90 percent, the system shall alert medical staff via pager and console within 1 second.
+REQ-004 When systolic blood pressure exceeds 180 mmHg, the system shall record the reading and notify the on-duty physician within 3 seconds.
+REQ-005 When ambient temperature exceeds 40 degrees Celsius, the system shall activate internal cooling fans and display status warning W201.
+REQ-006 The system shall encrypt all stored patient health records using AES-256 encryption.
+REQ-007 If database storage exceeds 95 percent capacity, the system shall archive telemetry older than 72 hours to external storage and display warning W301.
+REQ-008 When network connectivity is lost, the system shall store sensor telemetry locally for up to 48 hours without data loss.
+REQ-009 The system shall authenticate clinical staff via smartcard credentials within 1.5 seconds.
+REQ-010 If authentication fails 3 consecutive times, the system shall lock the terminal for 5 minutes and display error message E102.
+
+4 Verification
+Each requirement shall be verified by automated hardware-in-the-loop tests.
+5 Traceability
+All requirements trace to FDA Class II medical device safety specifications.
+

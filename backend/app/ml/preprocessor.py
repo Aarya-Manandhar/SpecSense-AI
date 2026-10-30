@@ -1,5 +1,6 @@
 import re
 import spacy
+from collections import Counter
 from typing import Optional, List, Dict, Tuple
 
 
@@ -188,10 +189,29 @@ class RequirementPreprocessor:
                 r'^(?:page\s+\d+(\s+of\s+\d+)?|\d+\s+of\s+\d+|\d+$|[-=_.*#~]{3,}$|[-=_.*#\s]+$'
                 r'|confidential(\s*-\s*internal\s+use\s+only)?'
                 r'|proprietary(\s+and\s+confidential)?'
-                r'|internal\s+use\s+only|all\s+rights\s+reserved|draft\s*(?:v\d+[\d.]*)?)$',
+                r'|internal\s+use\s+only|all\s+rights\s+reserved|draft\s*(?:v\d+[\d.]*)?'
+                r'|.+\s+page\s+\d+)$',
                 trimmed, re.IGNORECASE,
             )
         )
+
+    def _repeated_short_footer_lines(self, lines: List[str]) -> set[str]:
+        """Find repeated short lines likely to be page headers or footers.
+
+        A line is considered a repeated footer only when its trimmed,
+        case-insensitive form appears at least 3 times, is 1–80 characters,
+        lacks sentence-ending punctuation, and contains no requirement modal.
+        These last two checks preserve short real requirements and sentences.
+        """
+        normalized = [line.strip().casefold() for line in lines]
+        counts = Counter(normalized)
+        return {
+            line for line, count in counts.items()
+            if count >= 3
+            and 0 < len(line) <= 80
+            and not re.search(r'[.!?]$', line)
+            and not self._MODAL_RE.search(line)
+        }
 
     def _classify_exclusion_reason(self, line: str, in_numbered_doc: bool = False) -> str:
         """Returns the specific exclusion reason for a non-requirement line."""
@@ -368,6 +388,7 @@ class RequirementPreprocessor:
 
         cleaned_raw = self.clean_text(raw_text)
         lines = self._unwrap_text(cleaned_raw)
+        repeated_short_lines = self._repeated_short_footer_lines(lines)
 
         # Detect whether the document uses numbered requirements:
         # Require at least 3 ID-bearing lines OR >50% of candidate modal lines
@@ -397,7 +418,10 @@ class RequirementPreprocessor:
                     current_section = "section_4_5"
                 elif self._is_appendix(trimmed):
                     current_section = "appendix"
-                elif self._is_heading(trimmed):
+                elif self._is_heading(trimmed) and (
+                    current_section == "main"
+                    or re.match(r'^[0-9]+\s+[A-Z]', trimmed)
+                ):
                     current_section = "main"
 
                 if self._PLAIN_REQ_RE.match(trimmed) and current_section == "main":
@@ -411,7 +435,9 @@ class RequirementPreprocessor:
                     self.requirement_metadata[norm_stmt] = meta_entry
                     candidates.append(norm_stmt)
                 else:
-                    if current_section == "section_4_5":
+                    if self._is_noise(trimmed) or trimmed.casefold() in repeated_short_lines:
+                        reason = "noise"
+                    elif current_section == "section_4_5":
                         reason = "section 4/5"
                     elif current_section == "appendix":
                         reason = "appendix"
@@ -423,18 +449,18 @@ class RequirementPreprocessor:
             for line in lines:
                 trimmed = line.strip()
 
-                if self._is_noise(trimmed):
+                if self._is_noise(trimmed) or trimmed.casefold() in repeated_short_lines:
                     self.exclusion_log.append({"line": line, "reason": "noise"})
-                    continue
-                if len(trimmed) < 12:
-                    self.exclusion_log.append({"line": line, "reason": f"too short ({len(trimmed)} chars)"})
                     continue
 
                 if self._is_section_4_5(trimmed):
                     current_section = "section_4_5"
                 elif self._is_appendix(trimmed):
                     current_section = "appendix"
-                elif self._is_heading(trimmed):
+                elif self._is_heading(trimmed) and (
+                    current_section == "main"
+                    or re.match(r'^[0-9]+\s+[A-Z]', trimmed)
+                ):
                     current_section = "main"
 
                 if current_section == "section_4_5":
@@ -442,6 +468,10 @@ class RequirementPreprocessor:
                     continue
                 if current_section == "appendix":
                     self.exclusion_log.append({"line": line, "reason": "appendix"})
+                    continue
+
+                if len(trimmed) < 12:
+                    self.exclusion_log.append({"line": line, "reason": f"too short ({len(trimmed)} chars)"})
                     continue
 
                 if self._is_definition(trimmed):

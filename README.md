@@ -3,9 +3,9 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.0+-61DAFB.svg?style=flat&logo=react&logoColor=black)](https://reactjs.org)
 [![Vite](https://img.shields.io/badge/Vite-5.0+-646CFF.svg?style=flat&logo=vite&logoColor=white)](https://vitejs.dev)
-[![scikit--learn](https://img.shields.io/badge/scikit--learn-1.3+-F7931E.svg?style=flat&logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
+[![scikit--learn](https://img.shields.io/badge/scikit--learn-1.7.1-F7931E.svg?style=flat&logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
 [![SpaCy](https://img.shields.io/badge/spaCy-3.6+-09A3D5.svg?style=flat&logo=spacy&logoColor=white)](https://spacy.io)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **SpecSense AI** is an automated **Requirements Engineering Intelligence platform** that detects defects in Software Requirements Specifications (SRS), quantifies document health with an aggregate Risk Index, highlights flaw triggers, and generates targeted, testable rewrites in real time.
@@ -89,7 +89,8 @@ graph TD
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Python 3.10+**
+- **Python 3.12.16** (see `.python-version`)
+- **scikit-learn 1.7.1** (pinned in backend requirements for serialized model compatibility)
 - **Node.js 18+ & npm**
 - **Git**
 
@@ -122,7 +123,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 API Documentation will be live at:
 - **Interactive Swagger Docs**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
-- **Health Check**: `http://localhost:8000/api/v1/health`
+- **Health Check**: `http://localhost:8000/health` (also `/api/v1/health`)
 
 ---
 
@@ -175,9 +176,11 @@ cd backend
 pytest tests/ -v
 ```
 
+The backend runtime is pinned to Python 3.12.x and scikit-learn 1.7.1. The same versions are used in local setup and CI.
+
 ### GitHub Actions CI
 Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) to automatically:
-1. Lint and run test suites on Python 3.10
+1. Lint and run test suites on Python 3.12
 2. Build the production React bundle on Node 18
 
 ---
@@ -186,6 +189,7 @@ Automated CI is pre-configured in [`.github/workflows/ci.yml`](.github/workflows
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| `GET` | `/health` | Short service health check alias |
 | `GET` | `/api/v1/health` | Service health status & environment check |
 | `POST` | `/api/v1/analyze-text` | Analyze raw requirements text string (with size validation) |
 | `POST` | `/api/v1/analyze` | Parse and analyze uploaded SRS file (`.txt`, `.pdf`, `.docx`) |

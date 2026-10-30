@@ -282,3 +282,143 @@ def test_over_300_requirements_truncation_warning(preprocessor):
     assert truncation_count == 24, f"Expected 24 truncated requirements, got {truncation_count}"
 
 
+def test_verification_section_body_excluded(preprocessor):
+    """
+    A verification-titled section must exclude ALL body content, even lines that
+    contain 'shall'.  A short title-case line like 'Test Cases' inside the section
+    must also be excluded.  Nothing from section 4 onwards should appear in the
+    extracted requirements.
+    """
+    raw = (
+        "1 Scope\n"
+        "The system shall authenticate users with MFA.\n"
+        "The system shall store all audit records in encrypted storage.\n"
+        "4 Verification\n"
+        "Test Cases\n"
+        "Each requirement shall be verified by automated unit testing.\n"
+        "Inspection Records\n"
+        "Verification results shall be recorded in the project log.\n"
+    )
+    sents = preprocessor.extract_sentences(raw)
+    # Only the two scope requirements must survive
+    assert len(sents) == 2, f"Expected 2 requirements, got {len(sents)}: {sents}"
+    assert "The system shall authenticate users with MFA." in sents
+    assert "The system shall store all audit records in encrypted storage." in sents
+    # All four verification-body lines must be in exclusion_log as section 4/5
+    sec45_lines = [e["line"] for e in preprocessor.exclusion_log if e["reason"] == "section 4/5"]
+    assert any("Each requirement shall be verified" in l for l in sec45_lines), (
+        f"Verification body sentence missing from section 4/5 exclusions: {sec45_lines}"
+    )
+    assert any("Test Cases" in l for l in sec45_lines), (
+        f"'Test Cases' title-case line missing from section 4/5 exclusions: {sec45_lines}"
+    )
+
+
+def test_numbered_system_features_after_verification_is_kept(preprocessor):
+    """A numbered functional section after verification starts a new main section."""
+    raw = (
+        "1 Scope\n"
+        "The system shall authenticate users with MFA.\n"
+        "3 Verification\n"
+        "Each requirement shall be verified by automated unit testing.\n"
+        "4 System Features\n"
+        "The system shall generate a daily task summary for each user.\n"
+    )
+
+    sents = preprocessor.extract_sentences(raw)
+
+    assert "The system shall authenticate users with MFA." in sents
+    assert "The system shall generate a daily task summary for each user." in sents
+    assert not any("verified by automated" in s for s in sents)
+    assert any(
+        e["line"] == "Each requirement shall be verified by automated unit testing."
+        and e["reason"] == "section 4/5"
+        for e in preprocessor.exclusion_log
+    )
+
+
+def test_dotted_requirement_line_inside_verification_stays_excluded(preprocessor):
+    """A 4.1 shall line remains verification content and is excluded."""
+    raw = (
+        "REQ-001 The system shall authenticate users with MFA.\n"
+        "REQ-002 The system shall store audit records securely.\n"
+        "REQ-003 The system shall notify users of account changes.\n"
+        "4 Verification\n"
+        "4.1 The system shall verify each account change by email.\n"
+    )
+
+    sents = preprocessor.extract_sentences(raw)
+
+    assert len(sents) == 3, f"Expected only the three REQ lines, got: {sents}"
+    assert not any("verify each account change" in s for s in sents)
+    assert any(
+        e["line"] == "4.1 The system shall verify each account change by email."
+        and e["reason"] == "section 4/5"
+        for e in preprocessor.exclusion_log
+    )
+
+
+def test_repeated_document_title_is_noise_inside_excluded_section(preprocessor):
+    """A different repeated short document title is generic footer noise."""
+    title = "Billing Portal Requirements v2.3"
+    raw = (
+        "REQ-001 The system shall authenticate users with MFA.\n"
+        "REQ-002 The system shall store audit records securely.\n"
+        "REQ-003 The system shall notify users of account changes.\n"
+        "4 Verification\n"
+        "Each requirement shall be verified by a documented test.\n"
+        f"{title}\n{title}\n{title}\n"
+    )
+
+    preprocessor.extract_sentences(raw)
+
+    title_entries = [e for e in preprocessor.exclusion_log if e["line"] == title]
+    assert len(title_entries) == 3
+    assert all(e["reason"] == "noise" for e in title_entries)
+    assert all("Task Tracker SRS" not in e["line"] for e in preprocessor.exclusion_log)
+    assert preprocessor._is_noise(f"{title} - Page 4")
+
+
+def test_repeated_short_requirement_is_not_noise(preprocessor):
+    """Three identical short requirement lines remain requirements, not footers."""
+    requirement = "Users shall sign in."
+    raw = "\n".join([requirement] * 3)
+
+    sents = preprocessor.extract_sentences(raw)
+
+    assert sents == [requirement]
+    assert not any(
+        e["line"] == requirement and e["reason"] == "noise"
+        for e in preprocessor.exclusion_log
+    )
+
+
+def test_three_prose_standard_refs_do_not_trigger_numbered_mode(preprocessor):
+    """
+    Three prose references to standards (ISO-9001, TLS-1, RFC-2119) embedded in
+    ordinary requirement sentences must NOT satisfy the ID threshold (requires >=3
+    *standalone* ID-prefixed lines, not mid-sentence occurrences).  All unnumbered
+    requirements must be retained in modal/fallback mode.
+    """
+    raw = (
+        "The system shall conform to ISO-9001 quality management guidelines.\n"
+        "All communication channels shall use TLS-1.3 or higher encryption.\n"
+        "The word 'shall' in this document follows RFC-2119 conventions.\n"
+        "The system shall authenticate users via single sign-on.\n"
+        "The system shall log all failed login attempts for 90 days.\n"
+    )
+    sents = preprocessor.extract_sentences(raw)
+    # Must stay in modal mode: all 4 requirement sentences kept
+    # ('shall' convention meta-line is excluded as meta)
+    assert len(sents) >= 4, f"Expected >=4 requirements in modal mode, got {len(sents)}: {sents}"
+    assert any("ISO-9001" in s for s in sents), "ISO-9001 requirement dropped"
+    assert any("TLS-1.3" in s for s in sents), "TLS-1.3 requirement dropped"
+    assert any("single sign-on" in s for s in sents), "SSO requirement dropped"
+    assert any("failed login" in s for s in sents), "Login-log requirement dropped"
+    # No 'unnumbered in numbered document' exclusions should exist
+    reasons = [e["reason"] for e in preprocessor.exclusion_log]
+    assert "unnumbered in numbered document" not in reasons, (
+        f"Numbered mode falsely triggered; exclusions: {reasons}"
+    )
+
+

@@ -106,6 +106,7 @@ def read_root():
     }
 
 @app.get("/api/v1/health")
+@app.get("/health")
 def health_check():
     return {
         "status": "healthy",

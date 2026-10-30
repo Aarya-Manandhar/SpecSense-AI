@@ -1,0 +1,29 @@
+Software Requirements Specification
+CareTrack Patient Vitals Monitoring System
+Version 1.0
+
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for CareTrack ICU, an embedded telemetry system monitoring vital signs in intensive care units.
+1.2 Scope
+CareTrack monitors ECG, SpO2, blood pressure, and core temperature. It raises visual and audible alarms when thresholds are breached.
+1.3 Conventions
+The word "shall" marks a mandatory requirement. Each requirement has a unique identifier in the form REQ-xxx.
+
+3 Specific Requirements
+REQ-001 The system should monitor patient vitals quickly.
+REQ-002 The application shall allow clinicians to view patient data.
+REQ-003 Clinicians can adjust alarm thresholds easily.
+REQ-004 The system may silence alarms after too many alerts.
+REQ-005 Patient records shall be stored securely.
+REQ-006 If blood pressure fluctuates several times, the system shall display an appropriate warning.
+REQ-007 The system shall support common medical sensors, etc.
+REQ-008 Vitals transmission should be safe.
+REQ-009 The user interface shall be user-friendly and intuitive.
+REQ-010 The system could archive patient records as appropriate and/or purge old data.
+
+4 Verification
+Verification is left to developer judgment.
+5 Traceability
+Traceability will be established later.
+

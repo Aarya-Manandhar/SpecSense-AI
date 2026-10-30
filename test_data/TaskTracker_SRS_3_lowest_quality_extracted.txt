@@ -1,0 +1,121 @@
+Software Requirements Specification
+ Task Tracker Web Application
+ Version 1.0
+ Prepared in the structure of ISO/IEC/IEEE 29148:2018
+
+Task Tracker SRS v1.0
+Page 2
+Revision History
+Version
+Date
+Author
+Description
+1.0
+26 October 2026
+Requirements Team
+Initial release
+Table of Contents
+1 Introduction
+2 Overall Description
+3 Specific Requirements
+4 Verification
+5 Traceability
+Appendix A: Error Code Summary
+
+Task Tracker SRS v1.0
+Page 3
+1 Introduction
+1.1 Purpose
+This document specifies the software requirements for Task Tracker, a web application for creating,
+assigning and tracking tasks within a team. It is written for developers, testers, project managers and
+product owners.
+1.2 Scope
+Task Tracker allows registered users to manage tasks, attach files, receive notifications and export task
+data. It does not include time tracking, billing or a native mobile application.
+1.3 Definitions, Acronyms and Abbreviations
+ Task: A unit of work with a title, status, assignee and due date.
+ Assignee: The user responsible for completing a task.
+ Administrator: A user with permission to manage user accounts.
+ CSV: Comma Separated Values.
+ SRS: Software Requirements Specification.
+ TLS: Transport Layer Security.
+ UTC: Coordinated Universal Time.
+1.4 Conventions
+The word "shall" marks a mandatory requirement. Each requirement has a unique identifier in the form
+REQ-xxx.
+2 Overall Description
+2.1 Product Perspective
+Task Tracker is a standalone web application. It uses a relational database for storage and an external
+email server for notifications.
+2.2 Product Functions
+The product provides account management, task management, attachments, notifications, filtering and
+export.
+2.3 User Characteristics
+Regular users need basic web browsing skills. Administrators need to understand user roles and account
+management.
+2.4 Assumptions and Dependencies
+The email server is assumed to be reachable from the application server. The system depends on a
+relational database that supports transactions.
+3 Specific Requirements
+
+Task Tracker SRS v1.0
+Page 4
+3.1 Authentication
+REQ-001  The system should allow fast login.
+REQ-002  The application shall allow users to log in.
+REQ-003  The system may lock accounts after too many failed attempts.
+REQ-004  Users can reset passwords easily.
+REQ-005  The system shall allow users to log out.
+3.2 Task Management
+REQ-006  The application shall allow users to create tasks.
+REQ-007  The system should handle invalid task input appropriately.
+REQ-008  The application shall allow users to assign tasks.
+REQ-009  The system might support assigning tasks to external people if possible.
+REQ-010  The application shall allow users to complete tasks.
+REQ-011  The application shall allow users to delete tasks.
+REQ-012  Deleted tasks may be removed after some time.
+REQ-013  The application shall allow users to undelete tasks.
+3.3 Filtering and Search
+REQ-014  The system should filter tasks quickly.
+REQ-015  The application shall allow users to search tasks.
+REQ-016  The system shall provide helpful feedback for empty results.
+3.4 Attachments
+REQ-017  The application shall allow users to upload files.
+REQ-018  Large files may be rejected.
+REQ-019  The system should accept most file formats and/or reject unsafe ones.
+REQ-020  The system shall be secure against malicious files.
+3.5 Notifications
+REQ-021  The system could send notifications as appropriate.
+REQ-022  The system shall allow users to receive notifications.
+REQ-023  Failures should be logged where feasible.
+3.6 Export
+REQ-024  The application shall allow users to export data.
+REQ-025  Exports should be reasonably fast.
+3.7 Performance, Security and Reliability
+
+Task Tracker SRS v1.0
+Page 5
+REQ-026  The system should be fast and scalable.
+REQ-027  Passwords shall be stored securely.
+REQ-028  Data transmission should be safe.
+REQ-029  The system shall be reliable and robust.
+REQ-030  The system shall handle database problems gracefully.
+3.8 Compatibility and Usability
+REQ-031  The system should work on most browsers.
+REQ-032  The interface shall be user-friendly and intuitive.
+4 Verification
+Each requirement shall be verified by at least one test case, inspection or analysis recorded in the Task
+Tracker Verification Plan.
+5 Traceability
+Each requirement shall be traced to a user need and to at least one verification test case. Requirement
+changes shall be recorded with author, date and description in the revision history.
+Appendix A: Error Code Summary
+ E101: Invalid credentials.
+ E201: Empty task title.
+ E203: Unregistered assignee.
+ E301: Attachment too large.
+ E302: Unsupported file type.
+ E303: Attachment failed virus scan.
+ E401: Email notification failure.
+ E501: Export too large.
+ E601: Database connection failure.
