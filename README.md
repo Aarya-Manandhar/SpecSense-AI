@@ -67,6 +67,21 @@ The classifiers were trained on synthetic requirements. These small real-data re
 
 ---
 
+## What the Analysis Output Includes
+
+After analyzing pasted text or an uploaded SRS, SpecSense presents a document-level scorecard and an inspection list for the extracted requirements. The scorecard summarizes the health score and risk level, requirement and compliance counts, and the distribution of detected defect categories and severities. The inspection list shows each requirement statement with its score, flagged wording, defect labels, and an explanation of the issue. Where available, it also shows an example rewrite; the user can review or apply it. Non-requirement lines excluded from scoring are listed separately, and the findings can be exported as a CSV report.
+
+**Illustrative example**
+
+Input: “The system should respond quickly.”
+
+- **Possible findings:** weak modality (`should`) and ambiguous timing (`quickly`).
+- **Example rewrite:** “The system shall respond within 2 seconds.”
+
+The rewrite is an example to review against the project’s actual performance needs. Rule-based findings drive the score; ML-only findings are marked **Advisory** and do not reduce it.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -221,4 +236,3 @@ Contributions are welcome!
 5. Open a Pull Request
 
 ---
-
