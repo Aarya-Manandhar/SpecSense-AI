@@ -55,15 +55,15 @@ The classifiers were trained on synthetic requirements. These small real-data re
 
 ## Key Capabilities
 
-- 📄 **Multi-Format Ingestion**: Ingest and parse `.txt`, `.docx`, and `.pdf` SRS documents or paste freeform specifications directly into the analyzer.
-- 🎯 **Multi-Label Defect Detection**:
+- **Multi-Format Ingestion**: Ingest and parse `.txt`, `.docx`, and `.pdf` SRS documents or paste freeform specifications directly into the analyzer.
+- **Multi-Label Defect Detection**:
   - **Ambiguity (`is_ambiguous`)**: Vague terms, subjective adjectives, indeterminate qualifiers (`fast`, `seamless`, `user-friendly`).
   - **Incompleteness (`is_incomplete`)**: Missing conditions, omitted system boundaries, vague placeholders (`TBD`, `etc.`).
   - **Untestability (`is_untestable`)**: Statements lacking measurable verification criteria or quantitative acceptance metrics.
   - **Weak Modality (`is_weak`)**: Passive voice or non-binding modals (`should`, `could`, `may`, `might` instead of deterministic `shall`).
-- 📊 **Spec Health Score (0–100)**: Transparent weighted quality scoring system with category penalties and risk-level status badges.
-- ✍️ **Actionable Rewrites**: Prescriptive recommendations and testable specification rewrites tailored to IEEE 830 / ISO 29148 standards.
-- 📥 **Audit Export**: 1-click export of the entire defect breakdown into standardized `.csv` reports for QA and PM triage.
+- **Spec Health Score (0–100)**: Transparent weighted quality scoring system with category penalties and risk-level status badges.
+- **Actionable Rewrites**: Prescriptive recommendations and testable specification rewrites tailored to IEEE 830 / ISO 29148 standards.
+- **Audit Export**: 1-click export of the entire defect breakdown into standardized `.csv` reports for QA and PM triage.
 
 ---
 
